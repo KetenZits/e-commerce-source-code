@@ -26,7 +26,7 @@ export function ProductTile({ product, className }: { product: ProductTileData; 
               alt={product.title}
               fill
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              className="object-cover"
+              className="tile-image object-cover"
             />
           ) : null}
           {!product.inStock ? (

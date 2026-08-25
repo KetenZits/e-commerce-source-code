@@ -16,6 +16,7 @@ async function main() {
   await db.category.deleteMany();
   await db.shippingZone.deleteMany();
   await db.notificationLog.deleteMany();
+  await db.storeSetting.deleteMany();
   await db.account.deleteMany();
   await db.session.deleteMany();
   await db.user.deleteMany();
@@ -243,6 +244,14 @@ async function main() {
 
   void linen;
   void admin;
+
+  await db.storeSetting.createMany({
+    data: [
+      { key: "promptpayId", value: process.env.PROMPTPAY_ID || "0812345678" },
+      { key: "accountName", value: "Atelier" },
+      { key: "paymentMode", value: process.env.PAYMENT_MODE === "live" ? "live" : "demo" },
+    ],
+  });
 
   console.log("Seeded physical catalog");
   console.log("Admin  admin@atelier.dev / admin1234");

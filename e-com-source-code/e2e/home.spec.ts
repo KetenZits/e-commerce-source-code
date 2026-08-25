@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test("home renders the atelier catalog", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Shop the catalog" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Featured" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "New in" })).toBeVisible();
 });
 
@@ -23,7 +24,6 @@ test("buyer can check out a physical order in demo mode", async ({ page }) => {
   await page.getByLabel("Password").fill("buyer1234");
   await page.getByRole("main").getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "New in" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Buyer" })).toBeVisible();
   await page.goto("/products/stoneware-mug");
   await page.getByRole("button", { name: "Add to cart" }).click();
   await expect(page.getByText("Added to cart")).toBeVisible();

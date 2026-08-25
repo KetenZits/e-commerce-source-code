@@ -10,6 +10,12 @@ export function SiteFooter() {
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
           <span>{SITE_NAME} · Bangkok</span>
           <div className="flex gap-4">
+            <Link href="/categories" className="hover:text-foreground">
+              Collections
+            </Link>
+            <Link href="/#featured" className="hover:text-foreground">
+              Featured
+            </Link>
             <Link href="/shipping" className="hover:text-foreground">
               Shipping
             </Link>

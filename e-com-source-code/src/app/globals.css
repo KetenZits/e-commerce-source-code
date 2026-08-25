@@ -139,8 +139,63 @@
   }
 }
 
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal {
+  opacity: 0;
+}
+
+.reveal.is-visible {
+  animation: reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.nav-underline {
+  position: absolute;
+  inset-inline: 0.75rem;
+  bottom: -13px;
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--primary);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-link:hover .nav-underline,
+.nav-underline.is-active {
+  transform: scaleX(1);
+}
+
+.tile-image {
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .tile-image {
+  transform: scale(1.04);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .status-pulse {
+  .status-pulse,
+  .reveal.is-visible {
     animation: none;
+  }
+  .reveal {
+    opacity: 1;
+  }
+  .nav-underline,
+  .tile-image {
+    transition: none;
+  }
+  .group:hover .tile-image {
+    transform: none;
   }
 }

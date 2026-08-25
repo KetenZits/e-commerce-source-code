@@ -2,8 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { productImages } from "@/lib/product";
+import { getPaymentConfig, savePaymentConfig } from "@/lib/payment-config";
 import {
   fulfillSchema,
+  paymentSettingsSchema,
   productFormSchema,
   shippingZoneSchema,
   stockAdjustSchema,
@@ -182,5 +184,11 @@ export const adminRouter = router({
   deleteShippingZone: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
     await ctx.db.shippingZone.delete({ where: { id: input.id } });
     return { ok: true };
+  }),
+
+  paymentSettings: adminProcedure.query(async () => getPaymentConfig()),
+
+  savePaymentSettings: adminProcedure.input(paymentSettingsSchema).mutation(async ({ input }) => {
+    return savePaymentConfig(input);
   }),
 });

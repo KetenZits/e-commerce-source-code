@@ -1,10 +1,12 @@
 import generatePayload from "promptpay-qr";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
+import { getPaymentConfig } from "@/lib/payment-config";
 import { satangToBaht } from "@/lib/money";
 
-export async function promptPayQr(amountCents: number) {
-  const payload = generatePayload(env.PROMPTPAY_ID, { amount: satangToBaht(amountCents) });
+export async function promptPayQr(amountCents: number, promptpayId?: string) {
+  const id = promptpayId || (await getPaymentConfig()).promptpayId;
+  const payload = generatePayload(id, { amount: satangToBaht(amountCents) });
   const dataUrl = await QRCode.toDataURL(payload, {
     margin: 1,
     color: { dark: "#2C3B32", light: "#FFFFFF" },
@@ -24,7 +26,8 @@ export async function verifySlip(opts: {
   slipImageUrl?: string | null;
   expectedAmountCents: number;
 }): Promise<SlipResult> {
-  if (env.PAYMENT_MODE === "demo") {
+  const config = await getPaymentConfig();
+  if (config.paymentMode === "demo") {
     return { ok: true, uncertain: false, amountSatang: opts.expectedAmountCents, raw: { mode: "demo" } };
   }
 

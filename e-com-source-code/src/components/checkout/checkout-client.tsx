@@ -90,6 +90,15 @@ export function PaymentClient({ orderId }: { orderId: string }) {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={order.data.qr.dataUrl} alt="PromptPay QR" className="size-56 rounded-md bg-white" />
+          <p className="text-sm">{order.data.payment.accountName}</p>
+          <p className="font-tabular text-xs text-muted-foreground">{order.data.payment.promptpayId}</p>
+          {order.data.payment.paymentMode === "demo" ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Demo mode: no real transfer is required. Press I&apos;ve transferred to confirm the order.
+            </p>
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">Scan with a Thai bank app, then confirm below.</p>
+          )}
         </div>
       ) : null}
 

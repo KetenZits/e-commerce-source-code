@@ -16,7 +16,7 @@ export default async function CategoriesPage() {
           <Link
             key={category.id}
             href={`/catalog?category=${category.slug}`}
-            className="rounded-xl border border-border bg-card p-6 hover:border-primary/40"
+            className="block rounded-xl border border-border bg-card p-6 transition-colors duration-300 hover:border-primary/40"
           >
             <p className="eyebrow">{category.products.length} pieces</p>
             <h2 className="font-display mt-2 text-2xl">{category.name}</h2>

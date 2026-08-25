@@ -256,3 +256,8 @@ model Review {
 
   @@unique([productId, userId])
 }
+
+model StoreSetting {
+  key   String @id @db.VarChar(64)
+  value String @db.Text
+}

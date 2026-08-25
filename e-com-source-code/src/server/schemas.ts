@@ -94,3 +94,13 @@ export const fulfillSchema = z.object({
   trackingNumber: z.string().optional(),
   shippingCarrier: z.string().optional(),
 });
+
+export const paymentSettingsSchema = z.object({
+  promptpayId: z
+    .string()
+    .min(10)
+    .max(13)
+    .regex(/^[0-9]+$/, "Use a Thai mobile number or national ID, digits only"),
+  accountName: z.string().min(2).max(80),
+  paymentMode: z.enum(["demo", "live"]),
+});

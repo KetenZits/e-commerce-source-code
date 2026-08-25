@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { estimatedDeliveryLabel, matchShippingZone } from "@/lib/shipping";
 import { asStringArray } from "@/lib/product";
 import { protectedProcedure, router } from "@/server/trpc";
+import { getPaymentConfig } from "@/lib/payment-config";
 import { promptPayQr } from "@/server/services/payment";
 import { enqueue } from "@/server/queue";
 import { z } from "zod";
@@ -108,8 +109,9 @@ export const orderRouter = router({
       include: { items: true, address: true },
     });
     if (!order) throw new TRPCError({ code: "NOT_FOUND" });
-    const qr = order.status === "PENDING" ? await promptPayQr(order.totalCents) : null;
-    return { ...order, qr };
+    const payment = await getPaymentConfig();
+    const qr = order.status === "PENDING" ? await promptPayQr(order.totalCents, payment.promptpayId) : null;
+    return { ...order, qr, payment: { accountName: payment.accountName, promptpayId: payment.promptpayId, paymentMode: payment.paymentMode } };
   }),
 
   mine: protectedProcedure.query(async ({ ctx }) => {

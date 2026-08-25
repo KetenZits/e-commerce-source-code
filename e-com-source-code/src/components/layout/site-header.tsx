@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CartButton } from "@/components/cart/cart-button";
+import { NavSearch } from "@/components/layout/nav-search";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,41 +24,51 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { SITE_NAME } from "@/lib/constants";
+import { useState } from "react";
 
 const TABS = [
   { href: "/catalog", label: "Shop" },
   { href: "/categories", label: "Collections" },
+  { href: "/#featured", label: "Featured" },
   { href: "/shipping", label: "Shipping" },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
-        <Link href="/" className="font-display mr-4 text-lg tracking-tight">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+        <Link href="/" className="font-display mr-1 flex items-center gap-2 text-lg tracking-tight">
+          <span className="size-1.5 rotate-45 bg-brass" aria-hidden />
           {SITE_NAME}
         </Link>
-        <nav className="flex min-w-0 flex-1 items-center gap-1">
+        <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
           {TABS.map((tab) => {
-            const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+            const active =
+              tab.href === "/#featured"
+                ? false
+                : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "relative px-3 py-2 text-sm tracking-wide transition",
+                  "nav-link relative px-3 py-2 text-sm tracking-wide",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {tab.label}
-                {active ? <span className="absolute inset-x-3 -bottom-[11px] h-px bg-primary" /> : null}
+                <span className={cn("nav-underline", active && "is-active")} />
               </Link>
             );
           })}
         </nav>
+        <div className="ml-auto hidden items-center gap-2 md:flex">
+          <NavSearch />
+        </div>
         <CartButton />
         {status === "loading" ? (
           <span className="text-xs text-muted-foreground">…</span>
@@ -75,6 +95,33 @@ export function SiteHeader() {
             Sign in
           </Button>
         )}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button variant="ghost" size="sm" className="md:hidden" />}>
+            <Menu className="size-4" />
+            <span className="sr-only">Menu</span>
+          </DialogTrigger>
+          <DialogContent className="fixed top-0 right-0 left-auto h-full max-h-none w-72 max-w-none translate-x-0 translate-y-0 rounded-none border-y-0 border-l border-border sm:max-w-none">
+            <DialogHeader>
+              <DialogTitle className="font-display">{SITE_NAME}</DialogTitle>
+              <DialogDescription className="sr-only">Store navigation</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <NavSearch onSubmit={() => setOpen(false)} />
+              <nav className="flex flex-col gap-1">
+                {TABS.map((tab) => (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-md px-2 py-2 text-sm hover:bg-muted"
+                  >
+                    {tab.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </header>
   );
