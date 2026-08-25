@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,4 +6,207 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique @db.VarChar(191)
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String?
+  image         String?
+  role          Role      @default(BUYER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  orders       Order[]
+  licenses     License[]
+  reviews      Review[]
+  downloadLogs DownloadLog[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @db.VarChar(191)
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique @db.VarChar(191)
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique @db.VarChar(191)
+  title            String
+  tagline          String
+  description      String        @db.Text
+  authorName       String        @default("Sourcecode")
+  priceCents       Int
+  currency         String        @default("THB") @db.VarChar(8)
+  techStack        Json
+  category         String        @db.VarChar(64)
+  coverSnippet     Json
+  demoUrl          String?
+  repoPreviewFiles Json
+  status           ProductStatus @default(DRAFT)
+  salesCount       Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  assets       ProductAsset[]
+  orders       Order[]
+  licenses     License[]
+  reviews      Review[]
+  downloadLogs DownloadLog[]
+
+  @@index([status, createdAt])
+  @@index([category])
+}
+
+model ProductAsset {
+  id        String   @id @default(cuid())
+  productId String
+  r2Key     String
+  fileName  String
+  sizeBytes Int
+  checksum  String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  productId     String
+  priceCents    Int
+  currency      String      @default("THB") @db.VarChar(8)
+  status        OrderStatus @default(PENDING)
+  promptpayRef  String      @unique @db.VarChar(191)
+  slipImageUrl  String?     @db.Text
+  slipUncertain Boolean     @default(false)
+  verifiedAt    DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  license License?
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model License {
+  id             String    @id @default(cuid())
+  orderId        String    @unique
+  userId         String
+  productId      String
+  licenseKey     String    @unique @db.VarChar(191)
+  downloadCount  Int       @default(0)
+  maxDownloads   Int       @default(5)
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  downloadLogs DownloadLog[]
+
+  @@index([userId])
+  @@index([productId])
+}
+
+model DownloadLog {
+  id        String   @id @default(cuid())
+  licenseId String
+  userId    String
+  productId String
+  ip        String?
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([licenseId, createdAt])
+}
+
+model NotificationLog {
+  id      String              @id @default(cuid())
+  channel String
+  event   String
+  payload Json
+  status  NotificationStatus  @default(QUEUED)
+  error   String?             @db.Text
+  sentAt  DateTime?
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  comment   String   @db.Text
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
 }
