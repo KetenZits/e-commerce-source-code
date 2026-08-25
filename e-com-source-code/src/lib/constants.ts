@@ -1,25 +1,31 @@
-export const STACKS = [
-  "Next.js",
-  "React",
-  "Vue",
-  "Nuxt",
-  "Laravel",
-  "NestJS",
-  "Astro",
-  "TypeScript",
-  "Tailwind",
+export const SITE_NAME = "Atelier";
+export const SITE_TAGLINE = "Considered goods for daily use.";
+
+export const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD ?? 5);
+
+export const THAI_PROVINCES = [
+  "Bangkok",
+  "Nonthaburi",
+  "Pathum Thani",
+  "Samut Prakan",
+  "Samut Sakhon",
+  "Nakhon Pathom",
+  "Chiang Mai",
+  "Chiang Rai",
+  "Phuket",
+  "Khon Kaen",
+  "Nakhon Ratchasima",
+  "Chonburi",
+  "Songkhla",
+  "Ayutthaya",
+  "Other",
 ] as const;
 
-export const CATEGORIES = [
-  "boilerplate",
-  "dashboard",
-  "api",
-  "ecommerce",
-  "cms",
-  "starter",
+export const BANGKOK_METRO = [
+  "Bangkok",
+  "Nonthaburi",
+  "Pathum Thani",
+  "Samut Prakan",
+  "Samut Sakhon",
+  "Nakhon Pathom",
 ] as const;
-
-export const CURRENCIES = ["THB"] as const;
-
-export const SITE_NAME = "Sourcecode";
-export const SITE_TAGLINE = "Read the code before you buy it.";

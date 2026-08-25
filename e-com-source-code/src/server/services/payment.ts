@@ -7,7 +7,7 @@ export async function promptPayQr(amountCents: number) {
   const payload = generatePayload(env.PROMPTPAY_ID, { amount: satangToBaht(amountCents) });
   const dataUrl = await QRCode.toDataURL(payload, {
     margin: 1,
-    color: { dark: "#0B0E14", light: "#E7E9EE" },
+    color: { dark: "#2C3B32", light: "#FFFFFF" },
     width: 280,
   });
   return { payload, dataUrl };

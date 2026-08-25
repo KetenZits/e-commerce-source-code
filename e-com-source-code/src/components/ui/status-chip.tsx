@@ -6,22 +6,22 @@ export function StatusChip({
   children,
   className,
 }: {
-  tone?: "muted" | "amber" | "add" | "del";
+  tone?: "muted" | "brass" | "forest" | "brick";
   pulse?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
   const tones = {
     muted: "border-border text-muted-foreground",
-    amber: "border-amber/40 text-amber",
-    add: "border-add/40 text-add",
-    del: "border-del/40 text-del",
+    brass: "border-brass/50 text-brass",
+    forest: "border-primary/30 text-primary",
+    brick: "border-destructive/40 text-destructive",
   };
 
   return (
     <span
       className={cn(
-        "font-plex inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-[10px] tracking-[0.14em] uppercase",
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] tracking-[0.14em] uppercase",
         tones[tone],
         pulse && "status-pulse",
         className

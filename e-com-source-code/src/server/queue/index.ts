@@ -1,7 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 import { env, hasRedis } from "@/lib/env";
-import { fulfillPaidOrder } from "@/server/services/license";
+import { fulfillPaidOrder } from "@/server/services/fulfillment";
 import { verifySlip } from "@/server/services/payment";
 import { db } from "@/lib/db";
 import { indexProduct, removeProduct } from "@/server/services/search";
@@ -26,7 +26,7 @@ function redis() {
 function jobs() {
   const conn = redis();
   if (!conn) return null;
-  queue ??= new Queue("sourcecode", { connection: conn });
+  queue ??= new Queue("atelier", { connection: conn });
   return queue;
 }
 
@@ -37,7 +37,7 @@ async function handle(name: JobName, data: JobData[JobName]) {
     if (!order || order.status !== "PENDING") return;
     const result = await verifySlip({
       slipImageUrl: order.slipImageUrl,
-      expectedAmountCents: order.priceCents,
+      expectedAmountCents: order.totalCents,
     });
     if (result.ok) {
       await fulfillPaidOrder(order.id);
@@ -45,12 +45,18 @@ async function handle(name: JobName, data: JobData[JobName]) {
     }
     await db.order.update({
       where: { id: order.id },
-      data: { slipUncertain: result.uncertain, status: result.uncertain ? "PENDING" : "FAILED" },
+      data: {
+        slipUncertain: result.uncertain,
+        status: result.uncertain ? "PENDING" : "CANCELLED",
+      },
     });
     return;
   }
   if (name === "index-product") {
-    const product = await db.product.findUnique({ where: { id: (data as JobData["index-product"]).productId } });
+    const product = await db.product.findUnique({
+      where: { id: (data as JobData["index-product"]).productId },
+      include: { category: true, variants: true },
+    });
     if (product) await indexProduct(product);
     return;
   }
@@ -75,7 +81,7 @@ export function startWorker() {
     return null;
   }
   return new Worker(
-    "sourcecode",
+    "atelier",
     async (job: Job) => {
       await handle(job.name as JobName, job.data);
     },

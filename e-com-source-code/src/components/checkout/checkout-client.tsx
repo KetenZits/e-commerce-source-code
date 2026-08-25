@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { differenceInSeconds } from "date-fns";
 import { toast } from "sonner";
-import { CodeCard } from "@/components/product/code-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMoney } from "@/lib/money";
+import { formatAttributes } from "@/lib/product";
 import { trpc } from "@/trpc/client";
 
-export function CheckoutClient({ orderId }: { orderId: string }) {
+export function PaymentClient({ orderId }: { orderId: string }) {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
   const [slip, setSlip] = useState("");
@@ -31,53 +31,71 @@ export function CheckoutClient({ orderId }: { orderId: string }) {
   }, []);
 
   useEffect(() => {
-    if (order.data?.status === "PAID") {
+    if (!order.data) return;
+    if (order.data.status !== "PENDING") {
       setPhase("confirmed");
-      const timeout = window.setTimeout(() => router.push("/dashboard/purchases?paid=1"), 900);
+      const timeout = window.setTimeout(() => router.push(`/orders/${orderId}`), 800);
       return () => window.clearTimeout(timeout);
     }
-    if (order.data?.slipImageUrl || (order.data?.slipUncertain && order.data.status === "PENDING")) {
-      setPhase("verifying");
-    }
-  }, [order.data, router]);
+    if (order.data.slipUncertain) setPhase("verifying");
+  }, [order.data, orderId, router]);
 
   const remaining = useMemo(() => {
     if (!order.data) return 0;
     return Math.max(0, differenceInSeconds(new Date(order.data.expiresAt), new Date(now)));
   }, [order.data, now]);
 
-  if (order.isLoading || !order.data) {
-    return <p className="font-mono text-sm text-muted-foreground">Loading payment…</p>;
-  }
+  if (!order.data) return <p className="text-sm text-muted-foreground">Loading payment…</p>;
 
   const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
   const seconds = String(remaining % 60).padStart(2, "0");
 
   return (
     <div className="space-y-6">
-      <CodeCard product={order.data.product} />
+      <div className="rounded-xl border border-border bg-card p-4">
+        {order.data.items.map((item) => (
+          <div key={item.id} className="flex justify-between gap-4 py-2 text-sm">
+            <span>
+              {item.productTitleSnapshot}
+              <span className="block text-muted-foreground">
+                {formatAttributes(item.variantAttributesSnapshot)} × {item.quantity}
+              </span>
+            </span>
+            <span className="font-tabular">{formatMoney(item.unitPriceCents * item.quantity)}</span>
+          </div>
+        ))}
+        <div className="mt-3 flex justify-between text-sm">
+          <span>Shipping</span>
+          <span className="font-tabular">{formatMoney(order.data.shippingFeeCents)}</span>
+        </div>
+        <div className="mt-2 flex justify-between font-medium">
+          <span>Total</span>
+          <span className="font-tabular text-brass">{formatMoney(order.data.totalCents)}</span>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
-        <p className="font-heading text-xl text-amber">{formatMoney(order.data.priceCents, order.data.currency)}</p>
-        <StatusChip tone={phase === "confirmed" ? "add" : phase === "verifying" ? "amber" : "muted"} pulse={phase === "verifying"}>
+        <StatusChip
+          tone={phase === "confirmed" ? "forest" : phase === "verifying" ? "brass" : "muted"}
+          pulse={phase === "verifying"}
+        >
           {phase === "confirmed" ? "payment confirmed" : phase === "verifying" ? "verifying slip" : "waiting for payment"}
         </StatusChip>
+        <p className="font-tabular text-xs text-muted-foreground">
+          {order.data.promptpayRef} · {minutes}:{seconds}
+        </p>
       </div>
+
       {order.data.qr && phase !== "confirmed" ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-hair bg-surface p-6">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={order.data.qr.dataUrl} alt="PromptPay QR" className="size-56 rounded-md bg-foreground" />
-          <p className="font-plex text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
-            ref {order.data.promptpayRef} · {minutes}:{seconds}
-          </p>
+          <img src={order.data.qr.dataUrl} alt="PromptPay QR" className="size-56 rounded-md bg-white" />
         </div>
       ) : null}
+
       {phase !== "confirmed" ? (
         <div className="space-y-3">
-          <Input
-            placeholder="Slip image URL (optional)"
-            value={slip}
-            onChange={(event) => setSlip(event.target.value)}
-          />
+          <Input placeholder="Slip image URL (optional)" value={slip} onChange={(event) => setSlip(event.target.value)} />
           <Button
             className="w-full"
             disabled={transfer.isPending || remaining === 0}
@@ -85,12 +103,9 @@ export function CheckoutClient({ orderId }: { orderId: string }) {
           >
             I've transferred
           </Button>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Demo mode confirms the transfer automatically. Live mode sends the slip to SlipOK or EasySlip, then to the admin queue if the amount is uncertain.
-          </p>
         </div>
       ) : (
-        <p className="font-mono text-sm text-add">payment confirmed. opening my purchases…</p>
+        <p className="text-sm text-primary">Payment confirmed. Opening your order…</p>
       )}
     </div>
   );

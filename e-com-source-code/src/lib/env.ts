@@ -18,8 +18,8 @@ export const env = {
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
   R2_BUCKET: process.env.R2_BUCKET ?? "",
   R2_ENDPOINT: process.env.R2_ENDPOINT ?? "",
-  DOWNLOAD_URL_TTL_MINUTES: Number(process.env.DOWNLOAD_URL_TTL_MINUTES ?? 15),
-  MAX_DOWNLOADS: Number(process.env.MAX_DOWNLOADS ?? 5),
+  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL ?? "",
+  LOW_STOCK_THRESHOLD: Number(process.env.LOW_STOCK_THRESHOLD ?? 5),
   REDIS_URL: process.env.REDIS_URL ?? "",
   MEILI_HOST: process.env.MEILI_HOST ?? "",
   MEILI_API_KEY: process.env.MEILI_API_KEY ?? "",
@@ -27,7 +27,7 @@ export const env = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN ?? "",
   TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID ?? "",
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
-  RESEND_FROM: process.env.RESEND_FROM ?? "Sourcecode <noreply@localhost>",
+  RESEND_FROM: process.env.RESEND_FROM ?? "Atelier <noreply@localhost>",
 };
 
 export const envSchema = z.object({

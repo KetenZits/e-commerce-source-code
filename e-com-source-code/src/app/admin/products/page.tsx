@@ -9,23 +9,25 @@ export default async function AdminProductsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
-        <Button nativeButton={false} render={<Link href="/admin/products/new" />}>New product</Button>
+        <h1 className="font-display text-2xl">Products</h1>
+        <Button nativeButton={false} render={<Link href="/admin/products/new" />}>
+          New product
+        </Button>
       </div>
       <div className="space-y-2">
         {products.map((product) => (
           <Link
             key={product.id}
             href={`/admin/products/${product.id}`}
-            className="flex items-center gap-3 rounded-lg border border-hair bg-surface px-3 py-3 hover:border-amber/30"
+            className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-3"
           >
             <div className="min-w-0 flex-1">
-              <p className="font-heading text-sm">{product.title}</p>
-              <p className="font-plex text-[11px] text-muted-foreground">
-                {product.slug} · {formatMoney(product.priceCents, product.currency)} · {product.salesCount} sales
+              <p className="text-sm">{product.title}</p>
+              <p className="font-tabular text-xs text-muted-foreground">
+                {product.slug} · {formatMoney(product.basePriceCents)} · {product.variants.length} variants
               </p>
             </div>
-            <StatusChip tone={product.status === "PUBLISHED" ? "add" : "muted"}>{product.status.toLowerCase()}</StatusChip>
+            <StatusChip tone={product.status === "PUBLISHED" ? "forest" : "muted"}>{product.status.toLowerCase()}</StatusChip>
           </Link>
         ))}
       </div>

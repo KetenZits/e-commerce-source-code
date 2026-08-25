@@ -1,9 +1,6 @@
-import { getServerSession } from "next-auth";
 import { appRouter } from "@/server/routers/_app";
-import { authOptions } from "@/server/auth";
-import { db } from "@/lib/db";
+import { createContext } from "@/server/context";
 
 export async function serverCaller() {
-  const session = await getServerSession(authOptions);
-  return appRouter.createCaller({ db, session });
+  return appRouter.createCaller(await createContext());
 }

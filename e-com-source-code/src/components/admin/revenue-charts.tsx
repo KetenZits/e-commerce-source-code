@@ -27,25 +27,26 @@ export function RevenueCharts({
   series: { date: string; cents: number }[];
   topProducts: { title: string; cents: number; count: number }[];
 }) {
+  const grid = "#E3DFD6";
+  const tick = "#6E6A62";
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Revenue" value={formatMoney(totalCents)} />
         <Stat label="Paid orders" value={String(paidCount)} />
-        <Stat label="Pending" value={String(pendingCount)} />
+        <Stat label="Pending payment" value={String(pendingCount)} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-hair bg-surface p-4">
-          <p className="util-label mb-3">Revenue over time</p>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="eyebrow mb-3">Revenue over time</p>
           <Line
             data={{
               labels: series.map((row) => row.date),
               datasets: [
                 {
-                  label: "Revenue",
                   data: series.map((row) => row.cents / 100),
-                  borderColor: "#F0A93D",
-                  backgroundColor: "rgba(240,169,61,0.15)",
+                  borderColor: "#2C3B32",
+                  backgroundColor: "rgba(44,59,50,0.08)",
                   tension: 0.3,
                 },
               ],
@@ -53,30 +54,24 @@ export function RevenueCharts({
             options={{
               plugins: { legend: { display: false } },
               scales: {
-                x: { ticks: { color: "#8890A3" }, grid: { color: "#242938" } },
-                y: { ticks: { color: "#8890A3" }, grid: { color: "#242938" } },
+                x: { ticks: { color: tick }, grid: { color: grid } },
+                y: { ticks: { color: tick }, grid: { color: grid } },
               },
             }}
           />
         </div>
-        <div className="rounded-lg border border-hair bg-surface p-4">
-          <p className="util-label mb-3">Top products</p>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="eyebrow mb-3">Top products</p>
           <Bar
             data={{
               labels: topProducts.map((row) => row.title),
-              datasets: [
-                {
-                  label: "Revenue",
-                  data: topProducts.map((row) => row.cents / 100),
-                  backgroundColor: "#3FB950",
-                },
-              ],
+              datasets: [{ data: topProducts.map((row) => row.cents / 100), backgroundColor: "#B08D57" }],
             }}
             options={{
               plugins: { legend: { display: false } },
               scales: {
-                x: { ticks: { color: "#8890A3" }, grid: { display: false } },
-                y: { ticks: { color: "#8890A3" }, grid: { color: "#242938" } },
+                x: { ticks: { color: tick }, grid: { display: false } },
+                y: { ticks: { color: tick }, grid: { color: grid } },
               },
             }}
           />
@@ -88,9 +83,9 @@ export function RevenueCharts({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-hair bg-surface p-4">
-      <p className="util-label">{label}</p>
-      <p className="font-heading mt-2 text-2xl">{value}</p>
+    <div className="rounded-xl border border-border bg-card p-4">
+      <p className="eyebrow">{label}</p>
+      <p className="font-display mt-2 text-2xl">{value}</p>
     </div>
   );
 }

@@ -1,25 +1,32 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter, JetBrains_Mono } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans_Thai, Noto_Serif_Thai } from "next/font/google";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/providers";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 import "./globals.css";
 
-const inter = Inter({
+const display = Fraunces({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["500", "600"],
+  variable: "--font-display",
 });
 
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-jetbrains",
+const displayThai = Noto_Serif_Thai({
+  subsets: ["thai"],
+  weight: ["500", "600"],
+  variable: "--font-display-thai",
 });
 
-const ibmPlex = IBM_Plex_Mono({
+const body = IBM_Plex_Sans_Thai({
+  subsets: ["latin", "thai"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+});
+
+const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
-  variable: "--font-ibm-plex",
+  variable: "--font-mono-load",
 });
 
 export const metadata: Metadata = {
@@ -34,9 +41,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrains.variable} ${ibmPlex.variable} dark h-full`}
+      className={`${display.variable} ${displayThai.variable} ${body.variable} ${mono.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col bg-void">
+      <body className="flex min-h-full flex-col bg-background">
         <Providers>{children}</Providers>
       </body>
     </html>

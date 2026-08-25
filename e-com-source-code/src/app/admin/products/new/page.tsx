@@ -1,25 +1,33 @@
 import { ProductForm } from "@/components/admin/product-form";
+import { serverCaller } from "@/trpc/server";
 
-export default function NewProductPage() {
+export default async function NewProductPage() {
+  const categories = await (await serverCaller()).admin.categories();
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">New product</h1>
+      <h1 className="font-display text-2xl">New product</h1>
       <ProductForm
+        categories={categories}
         defaultValues={{
           slug: "",
           title: "",
-          tagline: "A short, concrete pitch for the listing.",
-          description: "Describe the archive. Buyers will also see the file tree.",
-          authorName: "Sourcecode",
-          priceCents: 99000,
+          description: "Describe the piece: materials, origin, and how it should be used.",
+          brand: "Atelier",
+          categoryId: categories[0]?.id ?? "",
+          basePriceCents: 99000,
           currency: "THB",
-          techStack: ["TypeScript"],
-          category: "boilerplate",
-          coverLang: "ts",
-          coverCode: "export function demo() {\n  return true\n}",
-          demoUrl: "",
+          images: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80"],
           status: "DRAFT",
-          previewFiles: [{ path: "src/index.ts", language: "ts", content: "export const version = \"1.0.0\"\n" }],
+          variants: [
+            {
+              sku: "ATL-NEW-M-NAT",
+              attributes: { size: "M", color: "Natural" },
+              priceCents: 99000,
+              stockQty: 0,
+              weightGrams: 400,
+              imageUrl: "",
+            },
+          ],
         }}
       />
     </div>

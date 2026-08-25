@@ -1,20 +1,18 @@
 import { Prisma } from "@/generated/prisma/client";
 import { env, hasMeili } from "@/lib/env";
-import { asStringArray } from "@/lib/file-tree";
 import type { db as Db } from "@/lib/db";
 
-type ProductRecord = Prisma.ProductGetPayload<object>;
+type ProductRecord = Prisma.ProductGetPayload<{ include: { category: true; variants: true } }>;
 
 function toDocument(product: ProductRecord) {
   return {
     id: product.id,
     slug: product.slug,
     title: product.title,
-    tagline: product.tagline,
-    category: product.category,
-    techStack: asStringArray(product.techStack),
-    priceCents: product.priceCents,
-    salesCount: product.salesCount,
+    brand: product.brand,
+    category: product.category.slug,
+    description: product.description,
+    priceCents: product.basePriceCents,
     status: product.status,
   };
 }
@@ -51,9 +49,12 @@ export async function searchProductIds(query: string): Promise<string[] | null> 
 export async function reindexAll(db: typeof Db) {
   const meili = await client();
   if (!meili) return;
-  const products = await db.product.findMany({ where: { status: "PUBLISHED" } });
+  const products = await db.product.findMany({
+    where: { status: "PUBLISHED" },
+    include: { category: true, variants: true },
+  });
   if (products.length === 0) return;
   const index = meili.index("products");
-  await index.updateSearchableAttributes(["title", "tagline", "techStack", "category"]);
+  await index.updateSearchableAttributes(["title", "brand", "category", "description"]);
   await index.addDocuments(products.map(toDocument));
 }

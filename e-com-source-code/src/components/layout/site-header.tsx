@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { CartButton } from "@/components/cart/cart-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +16,9 @@ import { cn } from "@/lib/utils";
 import { SITE_NAME } from "@/lib/constants";
 
 const TABS = [
-  { href: "/catalog", label: "Catalog" },
-  { href: "/categories", label: "Categories" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/catalog", label: "Shop" },
+  { href: "/categories", label: "Collections" },
+  { href: "/shipping", label: "Shipping" },
 ];
 
 export function SiteHeader() {
@@ -25,13 +26,12 @@ export function SiteHeader() {
   const { data: session, status } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-hair bg-void/90 backdrop-blur">
-      <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4">
-        <Link href="/" className="font-heading mr-4 text-sm font-semibold tracking-tight text-foreground">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
+        <Link href="/" className="font-display mr-4 text-lg tracking-tight">
           {SITE_NAME}
-          <span className="text-amber">.</span>
         </Link>
-        <nav className="flex min-w-0 flex-1 items-end gap-0 overflow-x-auto">
+        <nav className="flex min-w-0 flex-1 items-center gap-1">
           {TABS.map((tab) => {
             const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
             return (
@@ -39,26 +39,27 @@ export function SiteHeader() {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "font-plex relative px-3 py-3 text-[11px] tracking-[0.14em] uppercase transition",
-                  active ? "text-amber" : "text-muted-foreground hover:text-foreground"
+                  "relative px-3 py-2 text-sm tracking-wide transition",
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {tab.label}
-                {active ? <span className="absolute inset-x-2 -bottom-px h-0.5 bg-amber" /> : null}
+                {active ? <span className="absolute inset-x-3 -bottom-[11px] h-px bg-primary" /> : null}
               </Link>
             );
           })}
         </nav>
+        <CartButton />
         {status === "loading" ? (
-          <span className="font-plex text-[10px] tracking-[0.14em] text-muted-foreground uppercase">session</span>
+          <span className="text-xs text-muted-foreground">…</span>
         ) : session?.user ? (
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="font-plex tracking-[0.08em]" />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
               {session.user.name ?? session.user.email}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-44">
-              <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/purchases" />}>
-                My purchases
+              <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/orders" />}>
+                Orders
               </DropdownMenuItem>
               {session.user.role === "ADMIN" ? (
                 <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>

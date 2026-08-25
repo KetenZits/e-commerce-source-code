@@ -6,11 +6,11 @@ export default async function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Orders</h1>
-        <p className="text-sm text-muted-foreground">Pending manual-verification payments stay at the top.</p>
+        <h1 className="font-display text-2xl">Orders</h1>
+        <p className="text-sm text-muted-foreground">Pending payments first, then fulfillment.</p>
       </div>
       {orders.length === 0 ? (
-        <p className="font-mono text-sm text-muted-foreground">No orders yet.</p>
+        <p className="text-sm text-muted-foreground">No orders yet.</p>
       ) : (
         <OrdersQueue orders={orders} />
       )}

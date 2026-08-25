@@ -22,7 +22,10 @@ enum ProductStatus {
 enum OrderStatus {
   PENDING
   PAID
-  FAILED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
   REFUNDED
 }
 
@@ -43,12 +46,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts     Account[]
-  sessions     Session[]
-  orders       Order[]
-  licenses     License[]
-  reviews      Review[]
-  downloadLogs DownloadLog[]
+  accounts  Account[]
+  sessions  Session[]
+  orders    Order[]
+  reviews   Review[]
+  addresses Address[]
+  cartItems CartItem[]
 }
 
 model Account {
@@ -86,114 +89,157 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Product {
-  id               String        @id @default(cuid())
-  slug             String        @unique @db.VarChar(191)
-  title            String
-  tagline          String
-  description      String        @db.Text
-  authorName       String        @default("Sourcecode")
-  priceCents       Int
-  currency         String        @default("THB") @db.VarChar(8)
-  techStack        Json
-  category         String        @db.VarChar(64)
-  coverSnippet     Json
-  demoUrl          String?
-  repoPreviewFiles Json
-  status           ProductStatus @default(DRAFT)
-  salesCount       Int           @default(0)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique @db.VarChar(191)
+  parentId String?
 
-  assets       ProductAsset[]
-  orders       Order[]
-  licenses     License[]
-  reviews      Review[]
-  downloadLogs DownloadLog[]
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  products Product[]
 
-  @@index([status, createdAt])
-  @@index([category])
+  @@index([parentId])
 }
 
-model ProductAsset {
-  id        String   @id @default(cuid())
-  productId String
-  r2Key     String
-  fileName  String
-  sizeBytes Int
-  checksum  String
-  createdAt DateTime @default(now())
+model Product {
+  id             String        @id @default(cuid())
+  slug           String        @unique @db.VarChar(191)
+  title          String
+  description    String        @db.Text
+  basePriceCents Int
+  currency       String        @default("THB") @db.VarChar(8)
+  categoryId     String
+  brand          String
+  images         Json
+  status         ProductStatus @default(DRAFT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants ProductVariant[]
+  reviews  Review[]
+
+  @@index([status, createdAt])
+  @@index([categoryId])
+  @@index([brand])
+}
+
+model ProductVariant {
+  id         String  @id @default(cuid())
+  productId  String
+  sku        String  @unique @db.VarChar(191)
+  attributes Json
+  priceCents Int
+  stockQty   Int     @default(0)
+  weightGrams Int    @default(0)
+  imageUrl   String? @db.Text
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@index([stockQty])
+}
+
+model CartItem {
+  id               String   @id @default(cuid())
+  userId           String?
+  sessionId        String?  @db.VarChar(191)
+  productVariantId String
+  quantity         Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user    User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([productVariantId])
+}
+
+model Address {
+  id           String  @id @default(cuid())
+  userId       String
+  recipientName String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  subdistrict  String
+  district     String
+  province     String
+  postalCode   String
+  isDefault    Boolean @default(false)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+}
+
+model ShippingZone {
+  id             String  @id @default(cuid())
+  name           String
+  provinces      Json
+  minWeightGrams Int     @default(0)
+  maxWeightGrams Int?
+  feeCents       Int
+  sortOrder      Int     @default(0)
 }
 
 model Order {
-  id            String      @id @default(cuid())
-  userId        String
-  productId     String
-  priceCents    Int
-  currency      String      @default("THB") @db.VarChar(8)
-  status        OrderStatus @default(PENDING)
-  promptpayRef  String      @unique @db.VarChar(191)
-  slipImageUrl  String?     @db.Text
-  slipUncertain Boolean     @default(false)
-  verifiedAt    DateTime?
-  expiresAt     DateTime
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  userId          String
+  addressId       String?
+  status          OrderStatus @default(PENDING)
+  subtotalCents   Int
+  shippingFeeCents Int
+  totalCents      Int
+  currency        String      @default("THB") @db.VarChar(8)
+  promptpayRef    String      @unique @db.VarChar(191)
+  slipImageUrl    String?     @db.Text
+  slipUncertain   Boolean     @default(false)
+  verifiedAt      DateTime?
+  expiresAt       DateTime
+  trackingNumber  String?
+  shippingCarrier String?
+  shippingName    String?
+  estimatedDelivery String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  license License?
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  items   OrderItem[]
 
   @@index([status, createdAt])
   @@index([userId])
 }
 
-model License {
-  id             String    @id @default(cuid())
-  orderId        String    @unique
-  userId         String
-  productId      String
-  licenseKey     String    @unique @db.VarChar(191)
-  downloadCount  Int       @default(0)
-  maxDownloads   Int       @default(5)
-  expiresAt      DateTime?
-  revokedAt      DateTime?
-  createdAt      DateTime  @default(now())
+model OrderItem {
+  id                        String @id @default(cuid())
+  orderId                   String
+  productVariantId          String
+  quantity                  Int
+  unitPriceCents            Int
+  productTitleSnapshot      String
+  variantAttributesSnapshot Json
 
-  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product      Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
-  downloadLogs DownloadLog[]
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
 
-  @@index([userId])
-  @@index([productId])
-}
-
-model DownloadLog {
-  id        String   @id @default(cuid())
-  licenseId String
-  userId    String
-  productId String
-  ip        String?
-  userAgent String?  @db.Text
-  createdAt DateTime @default(now())
-
-  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-
-  @@index([licenseId, createdAt])
+  @@index([orderId])
 }
 
 model NotificationLog {
-  id      String              @id @default(cuid())
+  id      String             @id @default(cuid())
   channel String
   event   String
   payload Json
-  status  NotificationStatus  @default(QUEUED)
-  error   String?             @db.Text
+  status  NotificationStatus @default(QUEUED)
+  error   String?            @db.Text
   sentAt  DateTime?
 }
 

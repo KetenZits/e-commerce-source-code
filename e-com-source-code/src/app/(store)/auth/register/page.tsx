@@ -71,7 +71,7 @@ export default function RegisterPage() {
       </form>
       <p className="text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/auth/signin" className="text-amber">
+        <Link href="/auth/signin" className="text-primary">
           Sign in
         </Link>
       </p>

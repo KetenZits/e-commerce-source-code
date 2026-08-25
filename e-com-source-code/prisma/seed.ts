@@ -1,355 +1,21 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { filesToTree, type PreviewFile } from "../src/lib/file-tree";
+import { BANGKOK_METRO } from "../src/lib/constants";
 
 const db = new PrismaClient();
 
-function daysAgo(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date;
-}
-
-function product(input: {
-  slug: string;
-  title: string;
-  tagline: string;
-  description: string;
-  authorName: string;
-  priceCents: number;
-  techStack: string[];
-  category: string;
-  coverSnippet: { code: string; lang: string };
-  files: PreviewFile[];
-  salesCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-  demoUrl?: string;
-}) {
-  return {
-    slug: input.slug,
-    title: input.title,
-    tagline: input.tagline,
-    description: input.description,
-    authorName: input.authorName,
-    priceCents: input.priceCents,
-    currency: "THB",
-    techStack: input.techStack,
-    category: input.category,
-    coverSnippet: input.coverSnippet,
-    demoUrl: input.demoUrl,
-    repoPreviewFiles: filesToTree(input.files),
-    status: "PUBLISHED" as const,
-    salesCount: input.salesCount,
-    createdAt: input.createdAt,
-    updatedAt: input.updatedAt,
-  };
-}
-
-const products = [
-  product({
-    slug: "next-saas-kit",
-    title: "next-saas-kit",
-    tagline: "Auth, billing stubs, and an app shell — production-shaped, not a tutorial dump.",
-    description: `A Next.js App Router starter with the parts you actually keep: session-aware layouts, a typed API layer, and a billing-ready user model.
-
-## What's in the box
-- App Router + Server Components
-- Credentials + OAuth session wiring
-- Organization/workspace skeleton
-- Tailwind + shadcn/ui tokens
-
-Preview files are representative. The paid archive is the full source.`,
-    authorName: "Sourcecode",
-    priceCents: 149000,
-    techStack: ["Next.js", "TypeScript", "Tailwind"],
-    category: "boilerplate",
-    coverSnippet: {
-      lang: "tsx",
-      code: `export async function getWorkspace(id: string) {
-  const session = await auth()
-  if (!session) throw new Error("unauthorized")
-  return db.workspace.findFirst({ where: { id, members: { some: { userId: session.user.id } } } })
-}`,
-    },
-    files: [
-      {
-        path: "src/app/layout.tsx",
-        language: "tsx",
-        content: `export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="min-h-screen bg-background">{children}</body>
-    </html>
-  )
-}`,
-      },
-      {
-        path: "src/lib/auth.ts",
-        language: "ts",
-        content: `export async function auth() {
-  const session = await getServerSession(authOptions)
-  return session
-}
-
-export function requireUser(session: Session | null) {
-  if (!session?.user) throw new Error("unauthorized")
-  return session.user
-}`,
-      },
-      {
-        path: "src/server/workspace.ts",
-        language: "ts",
-        content: `export async function getWorkspace(id: string) {
-  const session = await auth()
-  if (!session) throw new Error("unauthorized")
-  return db.workspace.findFirst({
-    where: { id, members: { some: { userId: session.user.id } } },
-  })
-}`,
-      },
-    ],
-    salesCount: 213,
-    createdAt: daysAgo(4),
-    updatedAt: daysAgo(4),
-    demoUrl: "https://example.com",
-  }),
-  product({
-    slug: "laravel-api-starter",
-    title: "laravel-api-starter",
-    tagline: "Sanctum, Form Requests, and a versioned API you can ship on Monday.",
-    description: `A Laravel API skeleton with Sanctum tokens, policy-backed resources, and a consistent JSON envelope.
-
-Built for teams that already know Laravel and do not want another blog tutorial.`,
-    authorName: "Sourcecode",
-    priceCents: 129000,
-    techStack: ["Laravel", "PHP"],
-    category: "api",
-    coverSnippet: {
-      lang: "php",
-      code: `class StoreInvoiceRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return ['amount' => ['required', 'integer', 'min:1']];
-    }
-}`,
-    },
-    files: [
-      {
-        path: "app/Http/Requests/StoreInvoiceRequest.php",
-        language: "php",
-        content: `<?php
-
-namespace App\\Http\\Requests;
-
-use Illuminate\\Foundation\\Http\\FormRequest;
-
-class StoreInvoiceRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return [
-            'amount' => ['required', 'integer', 'min:1'],
-            'currency' => ['required', 'in:THB,USD'],
-        ];
-    }
-}`,
-      },
-      {
-        path: "app/Http/Controllers/Api/InvoiceController.php",
-        language: "php",
-        content: `public function store(StoreInvoiceRequest $request)
-{
-    $invoice = Invoice::create($request->validated());
-    return InvoiceResource::make($invoice);
-}`,
-      },
-      {
-        path: "routes/api.php",
-        language: "php",
-        content: `Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('invoices', InvoiceController::class);
-});`,
-      },
-    ],
-    salesCount: 481,
-    createdAt: daysAgo(210),
-    updatedAt: daysAgo(200),
-  }),
-  product({
-    slug: "react-admin-grid",
-    title: "react-admin-grid",
-    tagline: "TanStack Table, URL state, and bulk actions without a UI-kit tax.",
-    description: `A React admin data-grid kit: column visibility, saved views, and CSV export. Wired to URL search params so refresh does not lose the table.`,
-    authorName: "Sourcecode",
-    priceCents: 99000,
-    techStack: ["React", "TypeScript", "Tailwind"],
-    category: "dashboard",
-    coverSnippet: {
-      lang: "tsx",
-      code: `const table = useReactTable({
-  data,
-  columns,
-  state: { pagination, sorting },
-  getCoreRowModel: getCoreRowModel(),
-})`,
-    },
-    files: [
-      {
-        path: "src/grid/useGridState.ts",
-        language: "ts",
-        content: `export function useGridState() {
-  const params = useSearchParams()
-  return {
-    page: Number(params.get("page") ?? 1),
-    sort: params.get("sort") ?? "createdAt",
-  }
-}`,
-      },
-      {
-        path: "src/grid/DataGrid.tsx",
-        language: "tsx",
-        content: `export function DataGrid({ data, columns }: GridProps) {
-  const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() })
-  return <table>{/* rows */}</table>
-}`,
-      },
-    ],
-    salesCount: 156,
-    createdAt: daysAgo(90),
-    updatedAt: daysAgo(5),
-  }),
-  product({
-    slug: "nuxt-commerce-ui",
-    title: "nuxt-commerce-ui",
-    tagline: "Product listing, cart drawer, and checkout steps in Nuxt 3.",
-    description: `A Nuxt 3 storefront UI kit. Cart state lives in a composable; checkout is a three-step wizard with server-ready validation stubs.`,
-    authorName: "Sourcecode",
-    priceCents: 119000,
-    techStack: ["Vue", "Nuxt", "TypeScript"],
-    category: "ecommerce",
-    coverSnippet: {
-      lang: "ts",
-      code: `export const useCart = () => {
-  const items = useState<CartItem[]>("cart", () => [])
-  const total = computed(() => items.value.reduce((sum, i) => sum + i.price, 0))
-  return { items, total }
-}`,
-    },
-    files: [
-      {
-        path: "composables/useCart.ts",
-        language: "ts",
-        content: `export const useCart = () => {
-  const items = useState<CartItem[]>("cart", () => [])
-  const total = computed(() => items.value.reduce((sum, item) => sum + item.price * item.qty, 0))
-  return { items, total }
-}`,
-      },
-      {
-        path: "pages/checkout.vue",
-        language: "vue",
-        content: `<script setup lang="ts">
-const step = ref<"address" | "pay" | "done">("address")
-</script>`,
-      },
-    ],
-    salesCount: 92,
-    createdAt: daysAgo(40),
-    updatedAt: daysAgo(18),
-  }),
-  product({
-    slug: "nestjs-auth-kit",
-    title: "nestjs-auth-kit",
-    tagline: "JWT, refresh rotation, and role guards without the usual copy-paste.",
-    description: `NestJS auth module with access/refresh rotation, Redis-backed denylist hooks, and a predictable exception filter.`,
-    authorName: "Sourcecode",
-    priceCents: 139000,
-    techStack: ["NestJS", "TypeScript"],
-    category: "api",
-    coverSnippet: {
-      lang: "ts",
-      code: `@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("admin")
-@Get("licenses")
-listLicenses() {
-  return this.licenses.findActive()
-}`,
-    },
-    files: [
-      {
-        path: "src/auth/auth.controller.ts",
-        language: "ts",
-        content: `@Post("login")
-async login(@Body() dto: LoginDto) {
-  return this.auth.login(dto.email, dto.password)
-}`,
-      },
-      {
-        path: "src/auth/refresh.service.ts",
-        language: "ts",
-        content: `async rotate(token: string) {
-  const payload = await this.jwt.verifyAsync(token)
-  await this.store.revoke(payload.jti)
-  return this.issuePair(payload.sub)
-}`,
-      },
-    ],
-    salesCount: 64,
-    createdAt: daysAgo(12),
-    updatedAt: daysAgo(2),
-  }),
-  product({
-    slug: "astro-docs-ui",
-    title: "astro-docs-ui",
-    tagline: "A documentation theme with search, tabs, and MDX callouts.",
-    description: `Astro content collections + a tight docs chrome. Search is wired for Pagefind; callouts and code tabs ship as MDX components.`,
-    authorName: "Sourcecode",
-    priceCents: 79000,
-    techStack: ["Astro", "TypeScript", "Tailwind"],
-    category: "cms",
-    coverSnippet: {
-      lang: "ts",
-      code: `const docs = await getCollection("docs")
-export const sidebar = docs
-  .sort((a, b) => a.data.order - b.data.order)
-  .map((doc) => ({ href: doc.slug, label: doc.data.title }))`,
-    },
-    files: [
-      {
-        path: "src/content.config.ts",
-        language: "ts",
-        content: `const docs = defineCollection({
-  schema: z.object({
-    title: z.string(),
-    order: z.number(),
-  }),
-})`,
-      },
-      {
-        path: "src/components/Callout.mdx",
-        language: "tsx",
-        content: `export function Callout({ title, children }) {
-  return <aside className="border-l-2 border-amber px-3 py-2">{title}{children}</aside>
-}`,
-      },
-    ],
-    salesCount: 38,
-    createdAt: daysAgo(3),
-    updatedAt: daysAgo(1),
-  }),
-];
-
 async function main() {
-  await db.downloadLog.deleteMany();
-  await db.review.deleteMany();
-  await db.license.deleteMany();
+  await db.orderItem.deleteMany();
   await db.order.deleteMany();
-  await db.productAsset.deleteMany();
-  await db.notificationLog.deleteMany();
+  await db.cartItem.deleteMany();
+  await db.address.deleteMany();
+  await db.review.deleteMany();
+  await db.productVariant.deleteMany();
   await db.product.deleteMany();
+  await db.category.deleteMany();
+  await db.shippingZone.deleteMany();
+  await db.notificationLog.deleteMany();
   await db.account.deleteMany();
   await db.session.deleteMany();
   await db.user.deleteMany();
@@ -357,40 +23,230 @@ async function main() {
   const adminHash = await bcrypt.hash("admin1234", 10);
   const buyerHash = await bcrypt.hash("buyer1234", 10);
 
-  await db.user.create({
+  const admin = await db.user.create({
     data: {
-      email: "admin@sourcecode.dev",
+      email: "admin@atelier.dev",
       name: "Admin",
       passwordHash: adminHash,
       role: "ADMIN",
     },
   });
 
-  await db.user.create({
+  const buyer = await db.user.create({
     data: {
-      email: "buyer@sourcecode.dev",
+      email: "buyer@atelier.dev",
       name: "Buyer",
       passwordHash: buyerHash,
       role: "BUYER",
     },
   });
 
-  for (const item of products) {
-    const created = await db.product.create({ data: item });
-    await db.productAsset.create({
-      data: {
-        productId: created.id,
-        r2Key: `products/${created.slug}/source.zip`,
-        fileName: `${created.slug}.zip`,
-        sizeBytes: 1_048_576,
-        checksum: "demo-checksum",
-      },
-    });
-  }
+  await db.address.create({
+    data: {
+      userId: buyer.id,
+      recipientName: "Buyer Atelier",
+      phone: "0812345678",
+      addressLine1: "12 Charoen Krung",
+      subdistrict: "Bang Rak",
+      district: "Bang Rak",
+      province: "Bangkok",
+      postalCode: "10500",
+      isDefault: true,
+    },
+  });
 
-  console.log("Seeded 2 users and", products.length, "products");
-  console.log("Admin  admin@sourcecode.dev / admin1234");
-  console.log("Buyer  buyer@sourcecode.dev / buyer1234");
+  const apparel = await db.category.create({ data: { name: "Apparel", slug: "apparel" } });
+  const home = await db.category.create({ data: { name: "Home", slug: "home" } });
+  const kitchen = await db.category.create({
+    data: { name: "Kitchen", slug: "kitchen", parentId: home.id },
+  });
+  const accessories = await db.category.create({ data: { name: "Accessories", slug: "accessories" } });
+
+  await db.shippingZone.createMany({
+    data: [
+      {
+        name: "Bangkok metro, light",
+        provinces: [...BANGKOK_METRO],
+        minWeightGrams: 0,
+        maxWeightGrams: 2000,
+        feeCents: 5000,
+        sortOrder: 10,
+      },
+      {
+        name: "Bangkok metro, heavy",
+        provinces: [...BANGKOK_METRO],
+        minWeightGrams: 2001,
+        maxWeightGrams: null,
+        feeCents: 8000,
+        sortOrder: 20,
+      },
+      {
+        name: "Nationwide, light",
+        provinces: ["*"],
+        minWeightGrams: 0,
+        maxWeightGrams: 2000,
+        feeCents: 8000,
+        sortOrder: 30,
+      },
+      {
+        name: "Nationwide, heavy",
+        provinces: ["*"],
+        minWeightGrams: 2001,
+        maxWeightGrams: null,
+        feeCents: 12000,
+        sortOrder: 40,
+      },
+    ],
+  });
+
+  const linen = await db.product.create({
+    data: {
+      slug: "linen-overshirt",
+      title: "Linen overshirt",
+      description:
+        "A mid-weight linen overshirt cut for layering. Washed once so it arrives softened, with a clean stand collar and horn buttons. Wear it open over a tee, or closed as a light jacket.",
+      brand: "Atelier",
+      categoryId: apparel.id,
+      basePriceCents: 289000,
+      images: [
+        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "ATL-LINEN-S-NAT", attributes: { size: "S", color: "Natural" }, priceCents: 289000, stockQty: 8, weightGrams: 420 },
+          { sku: "ATL-LINEN-M-NAT", attributes: { size: "M", color: "Natural" }, priceCents: 289000, stockQty: 12, weightGrams: 440 },
+          { sku: "ATL-LINEN-L-NAT", attributes: { size: "L", color: "Natural" }, priceCents: 289000, stockQty: 6, weightGrams: 460 },
+          { sku: "ATL-LINEN-S-INK", attributes: { size: "S", color: "Ink" }, priceCents: 289000, stockQty: 4, weightGrams: 420 },
+          { sku: "ATL-LINEN-M-INK", attributes: { size: "M", color: "Ink" }, priceCents: 289000, stockQty: 9, weightGrams: 440 },
+          { sku: "ATL-LINEN-L-INK", attributes: { size: "L", color: "Ink" }, priceCents: 289000, stockQty: 0, weightGrams: 460 },
+        ],
+      },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "stoneware-mug",
+      title: "Stoneware mug",
+      description:
+        "Thrown in a small Chiang Mai studio. The glaze pools slightly at the foot. Holds 280 ml, comfortable in one hand, safe in the dishwasher.",
+      brand: "Khao Kiln",
+      categoryId: kitchen.id,
+      basePriceCents: 79000,
+      images: [
+        "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1577937927133-66ef06acdf18?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "KHAO-MUG-CLAY", attributes: { color: "Clay" }, priceCents: 79000, stockQty: 24, weightGrams: 380 },
+          { sku: "KHAO-MUG-FOREST", attributes: { color: "Forest" }, priceCents: 79000, stockQty: 18, weightGrams: 380 },
+        ],
+      },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "leather-card-case",
+      title: "Leather card case",
+      description:
+        "Vegetable-tanned cowhide, hand-stitched, sized for six cards and a folded note. It will darken with use. No logo on the face.",
+      brand: "Atelier",
+      categoryId: accessories.id,
+      basePriceCents: 159000,
+      images: [
+        "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1590874103328-eac38a941954?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "ATL-CARD-TAN", attributes: { color: "Tan" }, priceCents: 159000, stockQty: 14, weightGrams: 90 },
+          { sku: "ATL-CARD-BLACK", attributes: { color: "Black" }, priceCents: 159000, stockQty: 11, weightGrams: 90 },
+        ],
+      },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "wool-throw",
+      title: "Wool throw",
+      description:
+        "A compact throw in undyed merino. Dense enough for an evening on the sofa, light enough to keep at the foot of the bed. Fringed on two sides.",
+      brand: "North Loom",
+      categoryId: home.id,
+      basePriceCents: 349000,
+      images: [
+        "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "NL-THROW-IVORY", attributes: { color: "Ivory" }, priceCents: 349000, stockQty: 7, weightGrams: 980 },
+          { sku: "NL-THROW-CHARCOAL", attributes: { color: "Charcoal" }, priceCents: 349000, stockQty: 5, weightGrams: 980 },
+        ],
+      },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "oak-serving-board",
+      title: "Oak serving board",
+      description:
+        "White oak, oil-finished, with a shallow juice groove. For cheese, fruit, or a loaf. Hand-wash and oil occasionally.",
+      brand: "Atelier",
+      categoryId: kitchen.id,
+      basePriceCents: 189000,
+      images: [
+        "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1563291074-2dee32c21fd5?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "ATL-BOARD-SM", attributes: { size: "Small" }, priceCents: 189000, stockQty: 10, weightGrams: 720 },
+          { sku: "ATL-BOARD-LG", attributes: { size: "Large" }, priceCents: 249000, stockQty: 6, weightGrams: 1100 },
+        ],
+      },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "cotton-tote",
+      title: "Cotton tote",
+      description:
+        "Heavy canvas, unlined, with a wide gusset. Built for a market run or a laptop and a book. The Natural colourway is currently restocking.",
+      brand: "Atelier",
+      categoryId: accessories.id,
+      basePriceCents: 69000,
+      images: [
+        "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1590874103328-eac38a941954?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "ATL-TOTE-NAT", attributes: { color: "Natural" }, priceCents: 69000, stockQty: 0, weightGrams: 280 },
+          { sku: "ATL-TOTE-INK", attributes: { color: "Ink" }, priceCents: 69000, stockQty: 16, weightGrams: 280 },
+        ],
+      },
+    },
+  });
+
+  void linen;
+  void admin;
+
+  console.log("Seeded physical catalog");
+  console.log("Admin  admin@atelier.dev / admin1234");
+  console.log("Buyer  buyer@atelier.dev / buyer1234");
 }
 
 main()

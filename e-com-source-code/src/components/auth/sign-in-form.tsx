@@ -58,7 +58,7 @@ export function SignInForm({ google }: { google: boolean }) {
       ) : null}
       <p className="text-sm text-muted-foreground">
         No account?{" "}
-        <Link href="/auth/register" className="text-amber">
+        <Link href="/auth/register" className="text-primary">
           Create one
         </Link>
       </p>
