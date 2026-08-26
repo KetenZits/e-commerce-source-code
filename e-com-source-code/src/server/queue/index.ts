@@ -48,6 +48,16 @@ async function handle(name: JobName, data: JobData[JobName]) {
       data: {
         slipUncertain: result.uncertain,
         status: result.uncertain ? "PENDING" : "CANCELLED",
+        ...(!result.uncertain
+          ? {
+              statusEvents: {
+                create: {
+                  status: "CANCELLED" as const,
+                  note: "Slip verification failed.",
+                },
+              },
+            }
+          : {}),
       },
     });
     return;

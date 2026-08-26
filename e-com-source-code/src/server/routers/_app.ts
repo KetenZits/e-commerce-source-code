@@ -5,6 +5,7 @@ import { authRouter } from "@/server/routers/auth";
 import { cartRouter } from "@/server/routers/cart";
 import { orderRouter } from "@/server/routers/order";
 import { productRouter } from "@/server/routers/product";
+import { wishlistRouter } from "@/server/routers/wishlist";
 
 export const appRouter = router({
   auth: authRouter,
@@ -12,6 +13,7 @@ export const appRouter = router({
   cart: cartRouter,
   address: addressRouter,
   order: orderRouter,
+  wishlist: wishlistRouter,
   admin: adminRouter,
 });
 

@@ -1,3 +1,6 @@
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function StatusChip({
@@ -11,6 +14,7 @@ export function StatusChip({
   children: React.ReactNode;
   className?: string;
 }) {
+  const reduceMotion = useReducedMotion();
   const tones = {
     muted: "border-border text-muted-foreground",
     brass: "border-brass/50 text-brass",
@@ -19,15 +23,24 @@ export function StatusChip({
   };
 
   return (
-    <span
+    <motion.span
+      animate={
+        pulse && !reduceMotion
+          ? { opacity: [1, 0.55, 1] }
+          : { opacity: 1 }
+      }
+      transition={
+        pulse && !reduceMotion
+          ? { duration: 1.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }
+          : undefined
+      }
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] tracking-[0.14em] uppercase",
         tones[tone],
-        pulse && "status-pulse",
         className
       )}
     >
       {children}
-    </span>
+    </motion.span>
   );
 }

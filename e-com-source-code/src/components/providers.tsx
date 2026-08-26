@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { createQueryClient, createTrpcClient, trpc } from "@/trpc/client";
+import { WishlistProvider } from "@/components/wishlist/wishlist-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
@@ -14,7 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <WishlistProvider>{children}</WishlistProvider>
           <Toaster
             theme="light"
             position="bottom-right"

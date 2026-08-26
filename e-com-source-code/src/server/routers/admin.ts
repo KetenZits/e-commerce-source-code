@@ -13,6 +13,8 @@ import {
 import { adminProcedure, router } from "@/server/trpc";
 import { fulfillPaidOrder, notifyShipped } from "@/server/services/fulfillment";
 import { enqueue } from "@/server/queue";
+import { Prisma } from "@/generated/prisma/client";
+import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
 
 export const adminRouter = router({
   revenue: adminProcedure.query(async ({ ctx }) => {
@@ -22,10 +24,17 @@ export const adminRouter = router({
       orderBy: { verifiedAt: "asc" },
     });
     const byDay = new Map<string, number>();
+    const byWeek = new Map<string, number>();
     const byProduct = new Map<string, { title: string; cents: number; count: number }>();
     for (const order of paid) {
       const day = (order.verifiedAt ?? order.createdAt).toISOString().slice(0, 10);
       byDay.set(day, (byDay.get(day) ?? 0) + order.totalCents);
+      const week = startOfWeek(order.verifiedAt ?? order.createdAt, {
+        weekStartsOn: 1,
+      })
+        .toISOString()
+        .slice(0, 10);
+      byWeek.set(week, (byWeek.get(week) ?? 0) + order.totalCents);
       for (const item of order.items) {
         const current = byProduct.get(item.productTitleSnapshot) ?? {
           title: item.productTitleSnapshot,
@@ -37,12 +46,25 @@ export const adminRouter = router({
         byProduct.set(item.productTitleSnapshot, current);
       }
     }
+    const totalCents = paid.reduce((sum, order) => sum + order.totalCents, 0);
+    const now = new Date();
+    const [ordersToday, ordersThisMonth, pendingCount] = await Promise.all([
+      ctx.db.order.count({ where: { createdAt: { gte: startOfDay(now) } } }),
+      ctx.db.order.count({ where: { createdAt: { gte: startOfMonth(now) } } }),
+      ctx.db.order.count({ where: { status: "PENDING" } }),
+    ]);
     return {
-      totalCents: paid.reduce((sum, order) => sum + order.totalCents, 0),
+      totalCents,
       paidCount: paid.length,
-      pendingCount: await ctx.db.order.count({ where: { status: "PENDING" } }),
-      series: [...byDay.entries()].map(([date, cents]) => ({ date, cents })),
-      topProducts: [...byProduct.values()].sort((a, b) => b.cents - a.cents).slice(0, 6),
+      pendingCount,
+      ordersToday,
+      ordersThisMonth,
+      averageOrderCents: paid.length ? Math.round(totalCents / paid.length) : 0,
+      dailySeries: [...byDay.entries()].map(([date, cents]) => ({ date, cents })),
+      weeklySeries: [...byWeek.entries()].map(([date, cents]) => ({ date, cents })),
+      topProducts: [...byProduct.values()]
+        .sort((a, b) => b.count - a.count || b.cents - a.cents)
+        .slice(0, 6),
     };
   }),
 
@@ -101,8 +123,33 @@ export const adminRouter = router({
       }
       return saved;
     });
+    if (!id) {
+      await ctx.db.productDraft.deleteMany({ where: { userId: ctx.user.id } });
+    }
     await enqueue("index-product", { productId: product.id });
     return product;
+  }),
+
+  productDraft: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.productDraft.findUnique({ where: { userId: ctx.user.id } });
+  }),
+
+  saveProductDraft: adminProcedure
+    .input(z.object({ data: z.record(z.string(), z.unknown()) }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.productDraft.upsert({
+        where: { userId: ctx.user.id },
+        create: {
+          userId: ctx.user.id,
+          data: input.data as Prisma.InputJsonValue,
+        },
+        update: { data: input.data as Prisma.InputJsonValue },
+      });
+    }),
+
+  clearProductDraft: adminProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.productDraft.deleteMany({ where: { userId: ctx.user.id } });
+    return { ok: true };
   }),
 
   inventory: adminProcedure.query(async ({ ctx }) => {
@@ -130,6 +177,20 @@ export const adminRouter = router({
     });
   }),
 
+  orderById: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.order.findUnique({
+        where: { id: input.id },
+        include: {
+          user: true,
+          items: true,
+          address: true,
+          statusEvents: { orderBy: { createdAt: "asc" } },
+        },
+      });
+    }),
+
   decidePayment: adminProcedure
     .input(z.object({ orderId: z.string(), approve: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
@@ -141,7 +202,16 @@ export const adminRouter = router({
       if (input.approve) return fulfillPaidOrder(order.id);
       return ctx.db.order.update({
         where: { id: order.id },
-        data: { status: "CANCELLED", slipUncertain: false },
+        data: {
+          status: "CANCELLED",
+          slipUncertain: false,
+          statusEvents: {
+            create: {
+              status: "CANCELLED",
+              note: "Payment rejected by an administrator.",
+            },
+          },
+        },
       });
     }),
 
@@ -165,6 +235,15 @@ export const adminRouter = router({
         status: input.status,
         trackingNumber: input.trackingNumber || order.trackingNumber,
         shippingCarrier: input.shippingCarrier || order.shippingCarrier,
+        statusEvents: {
+          create: {
+            status: input.status,
+            note:
+              input.status === "SHIPPED"
+                ? `Shipped with ${input.shippingCarrier || order.shippingCarrier || "carrier"} · ${input.trackingNumber || order.trackingNumber || "tracking pending"}`
+                : `Order marked ${input.status.toLowerCase()}.`,
+          },
+        },
       },
     });
     if (input.status === "SHIPPED") await notifyShipped(updated.id);

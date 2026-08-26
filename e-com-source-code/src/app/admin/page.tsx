@@ -5,7 +5,10 @@ export default async function AdminRevenuePage() {
   const data = await (await serverCaller()).admin.revenue();
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl">Revenue</h1>
+      <div>
+        <p className="eyebrow">Overview</p>
+        <h1 className="font-display mt-2 text-3xl">Dashboard</h1>
+      </div>
       <RevenueCharts {...data} />
     </div>
   );

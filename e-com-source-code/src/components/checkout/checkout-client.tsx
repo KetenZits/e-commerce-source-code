@@ -15,8 +15,8 @@ export function PaymentClient({ orderId }: { orderId: string }) {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
   const [slip, setSlip] = useState("");
-  const [phase, setPhase] = useState<"waiting" | "verifying" | "confirmed">("waiting");
-  const order = trpc.order.byId.useQuery({ orderId }, { refetchInterval: phase === "confirmed" ? false : 2000 });
+  const [phase, setPhase] = useState<"waiting" | "verifying">("waiting");
+  const order = trpc.order.byId.useQuery({ orderId }, { refetchInterval: 2000 });
   const transfer = trpc.order.markTransferred.useMutation({
     onSuccess: () => {
       setPhase("verifying");
@@ -33,11 +33,9 @@ export function PaymentClient({ orderId }: { orderId: string }) {
   useEffect(() => {
     if (!order.data) return;
     if (order.data.status !== "PENDING") {
-      setPhase("confirmed");
       const timeout = window.setTimeout(() => router.push(`/orders/${orderId}`), 800);
       return () => window.clearTimeout(timeout);
     }
-    if (order.data.slipUncertain) setPhase("verifying");
   }, [order.data, orderId, router]);
 
   const remaining = useMemo(() => {
@@ -49,6 +47,12 @@ export function PaymentClient({ orderId }: { orderId: string }) {
 
   const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
   const seconds = String(remaining % 60).padStart(2, "0");
+  const displayPhase =
+    order.data.status !== "PENDING"
+      ? "confirmed"
+      : order.data.slipUncertain
+        ? "verifying"
+        : phase;
 
   return (
     <div className="space-y-6">
@@ -76,17 +80,17 @@ export function PaymentClient({ orderId }: { orderId: string }) {
 
       <div className="flex items-center justify-between">
         <StatusChip
-          tone={phase === "confirmed" ? "forest" : phase === "verifying" ? "brass" : "muted"}
-          pulse={phase === "verifying"}
+          tone={displayPhase === "confirmed" ? "forest" : displayPhase === "verifying" ? "brass" : "muted"}
+          pulse={displayPhase === "verifying"}
         >
-          {phase === "confirmed" ? "payment confirmed" : phase === "verifying" ? "verifying slip" : "waiting for payment"}
+          {displayPhase === "confirmed" ? "payment confirmed" : displayPhase === "verifying" ? "verifying slip" : "waiting for payment"}
         </StatusChip>
         <p className="font-tabular text-xs text-muted-foreground">
           {order.data.promptpayRef} · {minutes}:{seconds}
         </p>
       </div>
 
-      {order.data.qr && phase !== "confirmed" ? (
+      {order.data.qr && displayPhase !== "confirmed" ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={order.data.qr.dataUrl} alt="PromptPay QR" className="size-56 rounded-md bg-white" />
@@ -102,7 +106,7 @@ export function PaymentClient({ orderId }: { orderId: string }) {
         </div>
       ) : null}
 
-      {phase !== "confirmed" ? (
+      {displayPhase !== "confirmed" ? (
         <div className="space-y-3">
           <Input placeholder="Slip image URL (optional)" value={slip} onChange={(event) => setSlip(event.target.value)} />
           <Button
@@ -110,7 +114,7 @@ export function PaymentClient({ orderId }: { orderId: string }) {
             disabled={transfer.isPending || remaining === 0}
             onClick={() => transfer.mutate({ orderId, slipImageUrl: slip || undefined })}
           >
-            I've transferred
+            I&apos;ve transferred
           </Button>
         </div>
       ) : (

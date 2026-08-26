@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, ShoppingBag } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatAttributes, asAttributes } from "@/lib/product";
@@ -18,13 +20,17 @@ type Variant = {
 export function AddToCart({ variants }: { variants: Variant[] }) {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const reduceMotion = useReducedMotion();
+  const [added, setAdded] = useState(false);
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const selected = variants.find((variant) => variant.id === variantId) ?? variants[0];
   const add = trpc.cart.add.useMutation({
     onSuccess: async () => {
+      setAdded(true);
       toast.message("Added to cart");
       await utils.cart.get.invalidate();
       router.refresh();
+      window.setTimeout(() => setAdded(false), 1200);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -58,14 +64,22 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
           </button>
         ))}
       </div>
-      <Button
-        className="w-full"
-        size="lg"
-        disabled={out || add.isPending}
-        onClick={() => add.mutate({ productVariantId: selected.id, quantity: 1 })}
-      >
-        {out ? "Out of stock" : add.isPending ? "Adding" : "Add to cart"}
-      </Button>
+      <motion.div whileTap={reduceMotion || out ? undefined : { scale: 0.98 }}>
+        <Button
+          className="w-full justify-between px-4"
+          size="lg"
+          disabled={out || add.isPending}
+          onClick={() => add.mutate({ productVariantId: selected.id, quantity: 1 })}
+        >
+          <span>{out ? "Out of stock" : add.isPending ? "Adding" : added ? "Added" : "Add to cart"}</span>
+          <motion.span
+            animate={added && !reduceMotion ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+            className="inline-flex size-7 items-center justify-center rounded-full border border-primary-foreground/30"
+          >
+            {added ? <Check className="size-3.5" /> : <ShoppingBag className="size-3.5" />}
+          </motion.span>
+        </Button>
+      </motion.div>
       <p className="font-tabular text-xs text-muted-foreground">
         {asAttributes(selected.attributes).color ? `SKU ${selected.sku}` : selected.sku}
         {out ? "" : ` · ${selected.stockQty} in stock`}

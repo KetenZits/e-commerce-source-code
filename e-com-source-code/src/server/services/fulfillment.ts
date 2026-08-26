@@ -24,7 +24,17 @@ export async function fulfillPaidOrder(orderId: string) {
       }
       return tx.order.update({
         where: { id: existing.id },
-        data: { status: "PAID", verifiedAt: new Date(), slipUncertain: false },
+        data: {
+          status: "PAID",
+          verifiedAt: new Date(),
+          slipUncertain: false,
+          statusEvents: {
+            create: {
+              status: "PAID",
+              note: "PromptPay payment verified.",
+            },
+          },
+        },
         include: { items: true, user: true },
       });
     });
@@ -56,7 +66,16 @@ export async function fulfillPaidOrder(orderId: string) {
   } catch (error) {
     await db.order.update({
       where: { id: existing.id },
-      data: { status: "CANCELLED", slipUncertain: false },
+      data: {
+        status: "CANCELLED",
+        slipUncertain: false,
+        statusEvents: {
+          create: {
+            status: "CANCELLED",
+            note: "Order cancelled because stock was no longer available.",
+          },
+        },
+      },
     });
     throw error;
   }

@@ -15,8 +15,6 @@ export const productRouter = router({
       });
     }
     if (input.brand) and.push({ brand: input.brand });
-    if (input.minPrice != null) and.push({ basePriceCents: { gte: input.minPrice } });
-    if (input.maxPrice != null) and.push({ basePriceCents: { lte: input.maxPrice } });
     if (input.q.trim()) {
       const ids = await searchProductIds(input.q);
       if (ids) and.push({ id: { in: ids } });
@@ -32,26 +30,30 @@ export const productRouter = router({
     }
     if (and.length) where.AND = and;
 
-    const orderBy: Prisma.ProductOrderByWithRelationInput =
-      input.sort === "price-asc"
-        ? { basePriceCents: "asc" }
-        : input.sort === "price-desc"
-          ? { basePriceCents: "desc" }
-          : { createdAt: "desc" };
-
     const products = await ctx.db.product.findMany({
       where,
-      orderBy,
+      orderBy: { createdAt: "desc" },
       take: 60,
       include: { category: true, variants: true },
     });
 
-    return products.map((product) => ({
+    const mapped = products.map((product) => ({
       ...product,
       images: productImages(product.images),
       inStock: product.variants.some((variant) => variant.stockQty > 0),
       minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
     }));
+    const filtered = mapped.filter(
+      (product) =>
+        (input.minPrice == null || product.minPriceCents >= input.minPrice) &&
+        (input.maxPrice == null || product.minPriceCents <= input.maxPrice)
+    );
+    if (input.sort === "price-asc") {
+      filtered.sort((a, b) => a.minPriceCents - b.minPriceCents);
+    } else if (input.sort === "price-desc") {
+      filtered.sort((a, b) => b.minPriceCents - a.minPriceCents);
+    }
+    return filtered;
   }),
 
   bySlug: publicProcedure.input(z.object({ slug: z.string() })).query(async ({ ctx, input }) => {
@@ -62,6 +64,28 @@ export const productRouter = router({
     if (!product) return null;
     return { ...product, images: productImages(product.images) };
   }),
+
+  byIds: publicProcedure
+    .input(z.object({ ids: z.array(z.string()).max(100) }))
+    .query(async ({ ctx, input }) => {
+      if (!input.ids.length) return [];
+      const products = await ctx.db.product.findMany({
+        where: { id: { in: input.ids }, status: "PUBLISHED" },
+        include: { category: true, variants: true },
+      });
+      const rank = new Map(input.ids.map((id, index) => [id, index]));
+      return products
+        .map((product) => ({
+          ...product,
+          images: productImages(product.images),
+          inStock: product.variants.some((variant) => variant.stockQty > 0),
+          minPriceCents: Math.min(
+            ...product.variants.map((variant) => variant.priceCents),
+            product.basePriceCents
+          ),
+        }))
+        .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+    }),
 
   featured: publicProcedure.query(async ({ ctx }) => {
     const products = await ctx.db.product.findMany({

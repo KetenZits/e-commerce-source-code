@@ -161,7 +161,7 @@ async function main() {
       basePriceCents: 159000,
       images: [
         "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1590874103328-eac38a941954?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1400&q=80",
       ],
       status: "PUBLISHED",
       variants: {
@@ -207,7 +207,7 @@ async function main() {
       basePriceCents: 189000,
       images: [
         "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1563291074-2dee32c21fd5?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=1400&q=80",
       ],
       status: "PUBLISHED",
       variants: {
@@ -230,7 +230,7 @@ async function main() {
       basePriceCents: 69000,
       images: [
         "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1400&q=80",
-        "https://images.unsplash.com/photo-1590874103328-eac38a941954?auto=format&fit=crop&w=1400&q=80",
+        "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1400&q=80",
       ],
       status: "PUBLISHED",
       variants: {

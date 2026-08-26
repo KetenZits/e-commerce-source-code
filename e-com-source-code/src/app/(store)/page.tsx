@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { HomeHero } from "@/components/home/home-hero";
 import { ProductTile } from "@/components/product/product-tile";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionDivider } from "@/components/section-divider";
-import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { productImages } from "@/lib/product";
 
@@ -44,33 +44,12 @@ export default async function HomePage() {
     inStock: product.variants.some((variant) => variant.stockQty > 0),
     minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
   }));
-  const featured = mapped.filter((product) => ["linen-overshirt", "stoneware-mug", "leather-card-case"].includes(product.slug));
+  const featured = mapped.slice(0, 3);
   const newest = mapped.slice(0, 4);
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16">
-      <section className="grid items-end gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <Reveal className="max-w-2xl space-y-6">
-          <p className="eyebrow">Bangkok atelier</p>
-          <h1 className="font-display text-4xl leading-tight sm:text-5xl">Goods made to be used, not displayed.</h1>
-          <p className="max-w-lg text-muted-foreground leading-7">
-            A small catalog of apparel, tableware, and leather — photographed as they are, priced in Thai baht, shipped from Bangkok.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button nativeButton={false} render={<Link href="/catalog" />}>
-              Shop the catalog
-            </Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/#featured" />}>
-              View featured
-            </Button>
-          </div>
-        </Reveal>
-        {newest[0] ? (
-          <Reveal delay={120} className="hidden lg:block">
-            <ProductTile product={newest[0]} />
-          </Reveal>
-        ) : null}
-      </section>
+    <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-16">
+      <HomeHero product={newest[0]} />
 
       <SectionDivider />
 

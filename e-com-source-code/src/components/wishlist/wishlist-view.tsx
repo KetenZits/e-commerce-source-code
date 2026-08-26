@@ -1,0 +1,51 @@
+"use client";
+
+import Link from "next/link";
+import { Heart } from "lucide-react";
+import { motion } from "framer-motion";
+import { ProductTile } from "@/components/product/product-tile";
+import { Button } from "@/components/ui/button";
+import { useWishlist } from "@/components/wishlist/wishlist-provider";
+import { trpc } from "@/trpc/client";
+
+export function WishlistView() {
+  const { ids, hydrated } = useWishlist();
+  const products = trpc.product.byIds.useQuery(
+    { ids },
+    { enabled: hydrated && ids.length > 0 }
+  );
+
+  if (!hydrated || (ids.length > 0 && !products.data)) {
+    return <p className="text-sm text-muted-foreground">Loading wishlist…</p>;
+  }
+
+  if (ids.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-xl border border-border bg-card px-6 py-16 text-center"
+      >
+        <Heart className="mx-auto size-7 text-muted-foreground" />
+        <h2 className="font-display mt-4 text-2xl">Keep a few pieces close.</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+          Tap the heart on any product. Guest picks stay on this device and merge
+          into your account when you sign in.
+        </p>
+        <Button className="mt-6" nativeButton={false} render={<Link href="/catalog" />}>
+          Browse the catalog
+        </Button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div layout className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      {products.data?.map((product) => (
+        <motion.div layout key={product.id}>
+          <ProductTile product={product} />
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}

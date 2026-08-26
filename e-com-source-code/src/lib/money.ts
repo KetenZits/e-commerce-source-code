@@ -15,3 +15,7 @@ export function formatMoney(cents: number, currency = "THB") {
 export function satangToBaht(cents: number) {
   return cents / 100;
 }
+
+export function bahtToSatang(baht: number) {
+  return Math.round((Number.isFinite(baht) ? baht : 0) * 100);
+}

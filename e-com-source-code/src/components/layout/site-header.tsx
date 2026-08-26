@@ -30,6 +30,7 @@ const TABS = [
   { href: "/catalog", label: "Shop" },
   { href: "/categories", label: "Collections" },
   { href: "/#featured", label: "Featured" },
+  { href: "/wishlist", label: "Wishlist" },
   { href: "/shipping", label: "Shipping" },
 ];
 

@@ -85,6 +85,12 @@ export const orderRouter = router({
           expiresAt: addMinutes(new Date(), env.PAYMENT_TTL_MINUTES),
           shippingName: zone.name,
           estimatedDelivery: estimatedDeliveryLabel(address.province),
+          statusEvents: {
+            create: {
+              status: "PENDING",
+              note: "Order created and awaiting PromptPay payment.",
+            },
+          },
           items: {
             create: cart.map((item) => ({
               productVariantId: item.variant.id,
@@ -130,7 +136,18 @@ export const orderRouter = router({
       });
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order is not waiting for payment." });
       if (order.expiresAt < new Date()) {
-        await ctx.db.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+        await ctx.db.order.update({
+          where: { id: order.id },
+          data: {
+            status: "CANCELLED",
+            statusEvents: {
+              create: {
+                status: "CANCELLED",
+                note: "PromptPay payment window expired.",
+              },
+            },
+          },
+        });
         throw new TRPCError({ code: "BAD_REQUEST", message: "This payment window has expired." });
       }
       await ctx.db.order.update({

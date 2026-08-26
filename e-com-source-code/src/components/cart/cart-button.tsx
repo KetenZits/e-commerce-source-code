@@ -19,6 +19,7 @@ export function CartButton() {
   const cart = trpc.cart.get.useQuery();
   const count = cart.data?.count ?? 0;
   const lines = cart.data?.lines ?? [];
+  const checkoutBlocked = lines.some((line) => line.stockQty < 1);
 
   return (
     <Dialog>
@@ -64,9 +65,13 @@ export function CartButton() {
               <Button className="flex-1" variant="outline" nativeButton={false} render={<Link href="/cart" />}>
                 View cart
               </Button>
-              <Button className="flex-1" nativeButton={false} render={<Link href="/checkout" />}>
-                Checkout
-              </Button>
+              {checkoutBlocked ? (
+                <Button className="flex-1" disabled>Out of stock</Button>
+              ) : (
+                <Button className="flex-1" nativeButton={false} render={<Link href="/checkout" />}>
+                  Checkout
+                </Button>
+              )}
             </div>
           </div>
         )}

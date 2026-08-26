@@ -9,7 +9,7 @@ test("home renders the atelier catalog", async ({ page }) => {
 
 test("catalog lists seeded products", async ({ page }) => {
   await page.goto("/catalog");
-  await expect(page.getByRole("link", { name: "Linen overshirt" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Linen overshirt", exact: true })).toBeVisible();
 });
 
 test("product page can add an in-stock variant to the cart", async ({ page }) => {
@@ -37,4 +37,39 @@ test("buyer can check out a physical order in demo mode", async ({ page }) => {
   await page.getByRole("button", { name: "I've transferred" }).click();
   await expect(page.getByRole("heading", { name: "Order confirmed" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Stoneware mug")).toBeVisible();
+});
+
+test("guest wishlist persists on this device", async ({ page }) => {
+  await page.goto("/catalog");
+  const heart = page.getByRole("button", { name: "Add to wishlist" }).first();
+  await heart.click();
+  await expect(page.getByRole("button", { name: "Remove from wishlist" }).first()).toBeVisible();
+  await page.goto("/wishlist");
+  await expect(page.getByRole("heading", { name: "Wishlist" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove from wishlist" }).first()).toBeVisible();
+});
+
+test("admin sees analytics, baht pricing, and order details", async ({ page }) => {
+  await page.goto("/auth/signin");
+  await page.getByLabel("Email").fill("admin@atelier.dev");
+  await page.getByLabel("Password").fill("admin1234");
+  await page.getByRole("main").getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "New in" })).toBeVisible();
+
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByText("Orders today")).toBeVisible();
+  await expect(page.getByText("Average order")).toBeVisible();
+
+  await page.goto("/admin/products/new");
+  await page.getByRole("button", { name: /Price & stock/ }).click();
+  await page.locator('input[name="basePriceBaht"]').fill("490");
+  await expect(page.locator("aside").getByText(/490/)).toBeVisible();
+
+  await page.goto("/admin/orders");
+  const firstOrder = page.locator("tbody tr").first();
+  await expect(firstOrder).toBeVisible();
+  await firstOrder.click();
+  await expect(page.getByRole("heading", { name: "Status history" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Shipping address" })).toBeVisible();
 });

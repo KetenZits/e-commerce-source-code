@@ -52,6 +52,8 @@ model User {
   reviews   Review[]
   addresses Address[]
   cartItems CartItem[]
+  wishlistItems WishlistItem[]
+  productDraft ProductDraft?
 }
 
 model Account {
@@ -119,6 +121,7 @@ model Product {
   category Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants ProductVariant[]
   reviews  Review[]
+  wishlistItems WishlistItem[]
 
   @@index([status, createdAt])
   @@index([categoryId])
@@ -213,6 +216,7 @@ model Order {
   user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   address Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
   items   OrderItem[]
+  statusEvents OrderStatusEvent[]
 
   @@index([status, createdAt])
   @@index([userId])
@@ -260,4 +264,38 @@ model Review {
 model StoreSetting {
   key   String @id @db.VarChar(64)
   value String @db.Text
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt])
+}
+
+model OrderStatusEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model ProductDraft {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

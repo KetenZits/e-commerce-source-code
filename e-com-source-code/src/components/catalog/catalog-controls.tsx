@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function CatalogControls({
   categories,
@@ -23,56 +24,65 @@ export function CatalogControls({
     router.push(`/catalog?${next.toString()}`);
   }
 
+  function applyPrice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const next = new URLSearchParams(params.toString());
+    const min = String(data.get("min") ?? "").trim();
+    const max = String(data.get("max") ?? "").trim();
+    if (min) next.set("min", min);
+    else next.delete("min");
+    if (max) next.set("max", max);
+    else next.delete("max");
+    router.push(`/catalog?${next.toString()}`);
+  }
+
+  const activeCategory = params.get("category") ?? "";
+  const activeBrand = params.get("brand") ?? "";
+
   return (
-    <div className="flex flex-col gap-10 lg:flex-row">
-      <aside className="h-fit w-full rounded-xl border border-border bg-card p-5 lg:w-56">
-        <p className="eyebrow mb-4">Filter</p>
-        <div className="space-y-5">
-          <div>
-            <p className="mb-2 text-xs text-muted-foreground">Collection</p>
-            <div className="space-y-1">
-              {categories.map((category) => (
-                <button
-                  key={category.slug}
-                  type="button"
-                  onClick={() => setParam("category", params.get("category") === category.slug ? null : category.slug)}
-                  className={`block text-sm ${params.get("category") === category.slug ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs text-muted-foreground">Brand</p>
-            <div className="space-y-1">
-              {brands.map((brand) => (
-                <button
-                  key={brand}
-                  type="button"
-                  onClick={() => setParam("brand", params.get("brand") === brand ? null : brand)}
-                  className={`block text-sm ${params.get("brand") === brand ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {brand}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </aside>
-      <div className="min-w-0 flex-1">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+    <div className="space-y-8">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr]">
           <Input
+            key={params.get("q")}
             defaultValue={params.get("q") ?? ""}
-            placeholder="Search"
+            placeholder="Search products"
             className="h-9"
             onKeyDown={(event) => {
               if (event.key === "Enter") setParam("q", event.currentTarget.value || null);
             }}
           />
           <select
+            aria-label="Filter by collection"
             className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
-            defaultValue={params.get("sort") ?? "newest"}
+            value={activeCategory}
+            onChange={(event) => setParam("category", event.target.value || null)}
+          >
+            <option value="">All collections</option>
+            {categories.map((category) => (
+              <option key={category.slug} value={category.slug}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter by brand"
+            className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
+            value={activeBrand}
+            onChange={(event) => setParam("brand", event.target.value || null)}
+          >
+            <option value="">All brands</option>
+            {brands.map((brand) => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Sort products"
+            className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
+            value={params.get("sort") ?? "newest"}
             onChange={(event) => setParam("sort", event.target.value)}
           >
             <option value="newest">Newest</option>
@@ -80,8 +90,43 @@ export function CatalogControls({
             <option value="price-desc">Price, high to low</option>
           </select>
         </div>
-        {children}
+        <form
+          className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-end"
+          onSubmit={applyPrice}
+        >
+          <label className="flex-1 text-xs text-muted-foreground">
+            Minimum price (฿)
+            <Input
+              name="min"
+              type="number"
+              min="0"
+              defaultValue={params.get("min") ?? ""}
+              className="mt-1 h-9 font-tabular"
+            />
+          </label>
+          <label className="flex-1 text-xs text-muted-foreground">
+            Maximum price (฿)
+            <Input
+              name="max"
+              type="number"
+              min="0"
+              defaultValue={params.get("max") ?? ""}
+              className="mt-1 h-9 font-tabular"
+            />
+          </label>
+          <Button type="submit" variant="outline">
+            Apply price
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.push("/catalog")}
+          >
+            Clear
+          </Button>
+        </form>
       </div>
+      {children}
     </div>
   );
 }
