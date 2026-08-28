@@ -23,18 +23,42 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
   const { id } = await params;
   const order = await (await serverCaller()).order.byId({ orderId: id });
   if (!order) notFound();
+  const digital = order.fulfillmentType === "DIGITAL";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
       <p className="eyebrow">Order {order.promptpayRef}</p>
       <h1 className="font-display text-3xl">
-        {order.status === "PENDING" ? "Waiting for payment" : "Order confirmed"}
+        {order.status === "PENDING"
+          ? "Waiting for payment"
+          : digital && order.status === "DELIVERED"
+            ? "Your digital order is ready"
+            : "Order confirmed"}
       </h1>
       <StatusChip tone={tone[order.status] ?? "muted"}>{order.status.toLowerCase()}</StatusChip>
       <p className="text-muted-foreground">
-        Estimated delivery {order.estimatedDelivery ?? "—"}.
-        {order.trackingNumber ? ` Tracking ${order.trackingNumber} (${order.shippingCarrier ?? "carrier"}).` : ""}
+        {digital
+          ? order.status === "DELIVERED"
+            ? "Your access details are available below."
+            : "Payment is confirmed. The store is preparing your digital access details."
+          : `Estimated delivery ${order.estimatedDelivery ?? "—"}.${
+              order.trackingNumber
+                ? ` Tracking ${order.trackingNumber} (${order.shippingCarrier ?? "carrier"}).`
+                : ""
+            }`}
       </p>
+      {digital && order.digitalDelivery ? (
+        <section className="rounded-xl border border-primary/40 bg-card p-5">
+          <p className="eyebrow">Digital access</p>
+          <h2 className="font-display mt-2 text-xl">Delivery details</h2>
+          <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm leading-6">
+            {order.digitalDelivery}
+          </pre>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Keep these details private. They are only shown to the owner of this order.
+          </p>
+        </section>
+      ) : null}
       <SectionDivider />
       <div className="space-y-3">
         {order.items.map((item) => (
@@ -49,7 +73,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           </div>
         ))}
         <div className="flex justify-between text-sm">
-          <span>Shipping</span>
+          <span>{digital ? "Digital delivery" : "Shipping"}</span>
           <span className="font-tabular">{formatMoney(order.shippingFeeCents)}</span>
         </div>
         <div className="flex justify-between font-medium">

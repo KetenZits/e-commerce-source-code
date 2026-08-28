@@ -69,7 +69,11 @@ export function PaymentClient({ orderId }: { orderId: string }) {
           </div>
         ))}
         <div className="mt-3 flex justify-between text-sm">
-          <span>Shipping</span>
+          <span>
+            {order.data.fulfillmentType === "DIGITAL"
+              ? "Digital delivery"
+              : "Shipping"}
+          </span>
           <span className="font-tabular">{formatMoney(order.data.shippingFeeCents)}</span>
         </div>
         <div className="mt-2 flex justify-between font-medium">

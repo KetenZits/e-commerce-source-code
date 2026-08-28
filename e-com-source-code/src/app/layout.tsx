@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans_Thai, Noto_Serif_Thai } from "next/font/google";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/providers";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { getStorefrontConfig } from "@/lib/storefront-config";
 import "./globals.css";
 
 const display = Fraunces({
@@ -29,13 +29,16 @@ const mono = IBM_Plex_Mono({
   variable: "--font-mono-load",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    template: `%s · ${SITE_NAME}`,
-  },
-  description: SITE_TAGLINE,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const storefront = await getStorefrontConfig();
+  return {
+    title: {
+      default: `${storefront.siteName} — ${storefront.siteTagline}`,
+      template: `%s · ${storefront.siteName}`,
+    },
+    description: storefront.siteTagline,
+  };
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

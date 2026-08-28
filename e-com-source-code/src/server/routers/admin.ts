@@ -1,17 +1,29 @@
 import { TRPCError } from "@trpc/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { productImages } from "@/lib/product";
 import { getPaymentConfig, savePaymentConfig } from "@/lib/payment-config";
 import {
+  getStorefrontConfig,
+  saveStorefrontConfig,
+} from "@/lib/storefront-config";
+import {
+  digitalDeliverySchema,
   fulfillSchema,
   paymentSettingsSchema,
   productFormSchema,
   shippingZoneSchema,
   stockAdjustSchema,
+  storefrontSettingsSchema,
 } from "@/server/schemas";
 import { adminProcedure, router } from "@/server/trpc";
 import { fulfillPaidOrder, notifyShipped } from "@/server/services/fulfillment";
+import {
+  decryptDigitalDelivery,
+  encryptDigitalDelivery,
+} from "@/server/services/digital-delivery";
+import { notify } from "@/server/services/notifications";
 import { enqueue } from "@/server/queue";
 import { Prisma } from "@/generated/prisma/client";
 import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
@@ -171,16 +183,21 @@ export const adminRouter = router({
   }),
 
   orders: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.order.findMany({
+    const orders = await ctx.db.order.findMany({
       include: { user: true, items: true, address: true },
       orderBy: [{ slipUncertain: "desc" }, { createdAt: "desc" }],
+    });
+    return orders.map((order) => {
+      const { digitalDeliveryEncrypted, ...safeOrder } = order;
+      void digitalDeliveryEncrypted;
+      return safeOrder;
     });
   }),
 
   orderById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.order.findUnique({
+      const order = await ctx.db.order.findUnique({
         where: { id: input.id },
         include: {
           user: true,
@@ -189,6 +206,12 @@ export const adminRouter = router({
           statusEvents: { orderBy: { createdAt: "asc" } },
         },
       });
+      if (!order) return null;
+      const { digitalDeliveryEncrypted, ...safeOrder } = order;
+      return {
+        ...safeOrder,
+        digitalDelivery: decryptDigitalDelivery(digitalDeliveryEncrypted),
+      };
     }),
 
   decidePayment: adminProcedure
@@ -218,6 +241,12 @@ export const adminRouter = router({
   fulfill: adminProcedure.input(fulfillSchema).mutation(async ({ ctx, input }) => {
     const order = await ctx.db.order.findUnique({ where: { id: input.orderId } });
     if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+    if (order.fulfillmentType === "DIGITAL") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Use digital delivery for this order.",
+      });
+    }
     const allowed: Record<string, string[]> = {
       PAID: ["PACKED", "CANCELLED"],
       PACKED: ["SHIPPED", "CANCELLED"],
@@ -250,6 +279,54 @@ export const adminRouter = router({
     return updated;
   }),
 
+  deliverDigital: adminProcedure
+    .input(digitalDeliverySchema)
+    .mutation(async ({ ctx, input }) => {
+      const order = await ctx.db.order.findUnique({
+        where: { id: input.orderId },
+        include: { user: true },
+      });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+      if (order.fulfillmentType !== "DIGITAL") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This is not a digital order.",
+        });
+      }
+      if (!["PAID", "DELIVERED"].includes(order.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Payment must be confirmed before digital delivery.",
+        });
+      }
+
+      const deliveredAt = new Date();
+      const updated = await ctx.db.order.update({
+        where: { id: order.id },
+        data: {
+          status: "DELIVERED",
+          digitalDeliveryEncrypted: encryptDigitalDelivery(input.content),
+          digitalDeliveredAt: deliveredAt,
+          statusEvents: {
+            create: {
+              status: "DELIVERED",
+              note:
+                order.status === "DELIVERED"
+                  ? "Digital access details updated by an administrator."
+                  : "Digital access details delivered to the customer.",
+            },
+          },
+        },
+      });
+      await notify({
+        event: "order.digital-delivered",
+        subject: `Your digital order is ready · ${order.promptpayRef}`,
+        text: `Sign in and open order ${order.promptpayRef} to view your digital access details.`,
+        data: { email: order.user.email, orderId: order.id },
+      });
+      return updated;
+    }),
+
   shippingZones: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.shippingZone.findMany({ orderBy: { sortOrder: "asc" } });
   }),
@@ -270,4 +347,14 @@ export const adminRouter = router({
   savePaymentSettings: adminProcedure.input(paymentSettingsSchema).mutation(async ({ input }) => {
     return savePaymentConfig(input);
   }),
+
+  storefrontSettings: adminProcedure.query(async () => getStorefrontConfig()),
+
+  saveStorefrontSettings: adminProcedure
+    .input(storefrontSettingsSchema)
+    .mutation(async ({ input }) => {
+      const saved = await saveStorefrontConfig(input);
+      revalidatePath("/", "layout");
+      return saved;
+    }),
 });

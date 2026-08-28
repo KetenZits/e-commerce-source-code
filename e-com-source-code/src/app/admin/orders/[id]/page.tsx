@@ -26,6 +26,7 @@ export default async function AdminOrderDetailPage({
   const { id } = await params;
   const order = await (await serverCaller()).admin.orderById({ id });
   if (!order) notFound();
+  const digital = order.fulfillmentType === "DIGITAL";
 
   const events =
     order.statusEvents.length > 0
@@ -61,7 +62,7 @@ export default async function AdminOrderDetailPage({
           <p className="font-tabular text-xl text-brass">{formatMoney(order.totalCents)}</p>
         </div>
       </div>
-      <OrderActions order={order} />
+      <OrderActions order={order} detail />
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="rounded-xl border border-border bg-card p-5">
@@ -88,7 +89,7 @@ export default async function AdminOrderDetailPage({
               <span className="font-tabular">{formatMoney(order.subtotalCents)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Shipping</span>
+              <span>{digital ? "Digital delivery" : "Shipping"}</span>
               <span className="font-tabular">{formatMoney(order.shippingFeeCents)}</span>
             </div>
             <div className="flex justify-between font-medium">
@@ -100,8 +101,25 @@ export default async function AdminOrderDetailPage({
 
         <div className="space-y-6">
           <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="font-display text-xl">Shipping address</h2>
-            {order.address ? (
+            <h2 className="font-display text-xl">
+              {digital ? "Digital delivery" : "Shipping address"}
+            </h2>
+            {digital ? (
+              <div className="mt-4 text-sm leading-6 text-muted-foreground">
+                <p>
+                  {order.digitalDeliveredAt
+                    ? `Delivered ${new Date(order.digitalDeliveredAt).toLocaleString("en-GB")}`
+                    : order.status === "PAID"
+                      ? "Payment confirmed — access details are waiting to be delivered."
+                      : "Access details become deliverable after payment confirmation."}
+                </p>
+                {order.digitalDelivery ? (
+                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-3 text-xs text-foreground">
+                    {order.digitalDelivery}
+                  </pre>
+                ) : null}
+              </div>
+            ) : order.address ? (
               <address className="mt-4 text-sm leading-6 text-muted-foreground not-italic">
                 <strong className="text-foreground">{order.address.recipientName}</strong>
                 <br />
@@ -117,7 +135,7 @@ export default async function AdminOrderDetailPage({
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">Address no longer available.</p>
             )}
-            {order.trackingNumber ? (
+            {!digital && order.trackingNumber ? (
               <p className="font-tabular mt-4 text-xs">
                 {order.shippingCarrier ?? "Carrier"} · {order.trackingNumber}
               </p>

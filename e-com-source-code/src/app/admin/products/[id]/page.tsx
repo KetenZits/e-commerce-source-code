@@ -1,12 +1,17 @@
 import { notFound } from "next/navigation";
 import { ProductForm } from "@/components/admin/product-form";
 import { asAttributes, productImages } from "@/lib/product";
+import { getStorefrontConfig } from "@/lib/storefront-config";
 import { serverCaller } from "@/trpc/server";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const caller = await serverCaller();
-  const [product, categories] = await Promise.all([caller.admin.productById({ id }), caller.admin.categories()]);
+  const [product, categories, storefront] = await Promise.all([
+    caller.admin.productById({ id }),
+    caller.admin.categories(),
+    getStorefrontConfig(),
+  ]);
   if (!product) notFound();
 
   return (
@@ -15,6 +20,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <ProductForm
         id={product.id}
         categories={categories}
+        storeMode={storefront.storeMode}
         defaultValues={{
           slug: product.slug,
           title: product.title,

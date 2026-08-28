@@ -42,7 +42,10 @@ export async function fulfillPaidOrder(orderId: string) {
     await notify({
       event: "order.paid",
       subject: `Payment confirmed · ${paid.promptpayRef}`,
-      text: `${paid.user.email} paid ฿${(paid.totalCents / 100).toFixed(0)}. ${paid.items.length} line(s). Estimated delivery ${paid.estimatedDelivery ?? "—"}.`,
+      text:
+        paid.fulfillmentType === "DIGITAL"
+          ? `${paid.user.email} paid ฿${(paid.totalCents / 100).toFixed(0)}. ${paid.items.length} line(s). Digital access details are ready for administrator delivery.`
+          : `${paid.user.email} paid ฿${(paid.totalCents / 100).toFixed(0)}. ${paid.items.length} line(s). Estimated delivery ${paid.estimatedDelivery ?? "—"}.`,
       data: { email: paid.user.email, orderId: paid.id },
     });
 

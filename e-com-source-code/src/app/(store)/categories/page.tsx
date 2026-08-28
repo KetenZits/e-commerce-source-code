@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { ProductTile } from "@/components/product/product-tile";
 import { Reveal } from "@/components/motion/reveal";
+import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
+import { TiltCard } from "@/components/motion/tilt-card";
 import { SectionDivider } from "@/components/section-divider";
 import { db } from "@/lib/db";
 import { productImages } from "@/lib/product";
+import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function CategoriesPage() {
-  const [categories, products] = await Promise.all([
+  const [categories, products, storefront] = await Promise.all([
     db.category.findMany({
       include: { children: true, parent: true, products: { where: { status: "PUBLISHED" } } },
       orderBy: { name: "asc" },
@@ -17,6 +20,7 @@ export default async function CategoriesPage() {
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
+    getStorefrontConfig(),
   ]);
   const roots = categories.filter((category) => !category.parentId);
   const featured = products.map((product) => ({
@@ -37,19 +41,19 @@ export default async function CategoriesPage() {
         <span>Collections</span>
       </nav>
       <Reveal className="max-w-2xl space-y-4 py-4">
-        <p className="eyebrow">The collection</p>
-        <h1 className="font-display text-4xl">Useful pieces, considered slowly.</h1>
+        <p className="eyebrow">{storefront.collections.eyebrow}</p>
+        <h1 className="font-display text-4xl">{storefront.collections.title}</h1>
         <p className="leading-7 text-muted-foreground">
-          Our collections group material, purpose, and maker rather than seasons.
-          Each piece is selected to settle naturally into everyday routines.
+          {storefront.collections.body}
         </p>
       </Reveal>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {roots.map((category, index) => (
-          <Reveal key={category.id} delay={index * 70}>
+      <StaggerRoot className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {roots.map((category) => (
+          <StaggerItem key={category.id}>
+            <TiltCard className="h-full" intensity={5}>
             <Link
               href={`/catalog?category=${category.slug}`}
-              className="block min-h-44 rounded-xl border border-border bg-card p-6 transition-colors duration-300 hover:border-primary/40"
+              className="premium-depth block min-h-44 rounded-xl border border-border bg-card/90 p-6 backdrop-blur-sm"
             >
               <p className="eyebrow">{category.products.length} pieces</p>
               <h2 className="font-display mt-8 text-2xl">{category.name}</h2>
@@ -59,9 +63,10 @@ export default async function CategoriesPage() {
                 </p>
               ) : null}
             </Link>
-          </Reveal>
+            </TiltCard>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerRoot>
       <SectionDivider />
       <section className="space-y-7">
         <div className="flex items-end justify-between">
@@ -71,11 +76,13 @@ export default async function CategoriesPage() {
           </div>
           <Link href="/catalog" className="text-sm text-primary">Shop all</Link>
         </div>
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <StaggerRoot className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((product) => (
-            <ProductTile key={product.id} product={product} />
+            <StaggerItem key={product.id}>
+              <ProductTile product={product} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerRoot>
       </section>
     </div>
   );

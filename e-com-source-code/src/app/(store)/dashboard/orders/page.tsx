@@ -43,7 +43,12 @@ export default async function OrdersPage() {
               <div>
                 <p className="font-tabular text-sm">{order.promptpayRef}</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.items.length} item(s) · {order.estimatedDelivery ?? "—"}
+                  {order.items.length} item(s) ·{" "}
+                  {order.fulfillmentType === "DIGITAL"
+                    ? order.status === "DELIVERED"
+                      ? "access ready"
+                      : "digital delivery"
+                    : order.estimatedDelivery ?? "—"}
                 </p>
               </div>
               <div className="text-right">

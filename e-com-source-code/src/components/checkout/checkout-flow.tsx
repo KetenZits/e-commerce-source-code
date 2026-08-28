@@ -14,21 +14,25 @@ import { Label } from "@/components/ui/label";
 import { SectionDivider } from "@/components/section-divider";
 import { THAI_PROVINCES } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
+import type { StoreMode } from "@/lib/storefront-config";
 import { addressSchema } from "@/server/schemas";
 import { trpc } from "@/trpc/client";
 import type { z } from "zod";
 
 type AddressForm = z.infer<typeof addressSchema>;
 
-export function CheckoutFlow() {
+export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
   const router = useRouter();
   const { status } = useSession();
+  const physical = storeMode === "physical";
   const [addressId, setAddressId] = useState<string | null>(null);
   const cart = trpc.cart.get.useQuery(undefined, { enabled: status === "authenticated" });
-  const addresses = trpc.address.list.useQuery(undefined, { enabled: status === "authenticated" });
+  const addresses = trpc.address.list.useQuery(undefined, {
+    enabled: status === "authenticated" && physical,
+  });
   const quote = trpc.order.quoteShipping.useQuery(
     { addressId: addressId ?? "" },
-    { enabled: Boolean(addressId) }
+    { enabled: physical && Boolean(addressId) }
   );
   const createAddress = trpc.address.create.useMutation({
     onSuccess: (address) => {
@@ -100,8 +104,9 @@ export function CheckoutFlow() {
         )}
       </section>
 
+      {physical ? (
+        <>
       <SectionDivider />
-
       <section className="space-y-4">
         <h2 className="font-display text-xl">2. Shipping address</h2>
         <div className="space-y-2">
@@ -173,20 +178,46 @@ export function CheckoutFlow() {
           <p className="text-sm text-muted-foreground">Select an address to see the shipping fee.</p>
         )}
       </section>
+        </>
+      ) : (
+        <>
+          <SectionDivider />
+          <section className="rounded-xl border border-primary/40 bg-card p-5">
+            <p className="eyebrow">Digital delivery</p>
+            <h2 className="font-display mt-2 text-xl">No shipping address required</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              After payment is verified, the store will add your ID, code, or
+              access instructions securely to this order.
+            </p>
+          </section>
+        </>
+      )}
 
       <SectionDivider />
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl">4. Payment</h2>
+        <h2 className="font-display text-xl">{physical ? "4" : "2"}. Payment</h2>
         <p className="text-sm text-muted-foreground">
-          You will receive a PromptPay QR on the next screen. The order is packed after the transfer is verified.
+          You will receive a PromptPay QR on the next screen.{" "}
+          {physical
+            ? "The order is packed after the transfer is verified."
+            : "Your digital access will be prepared after the transfer is verified."}
         </p>
         {outOfStock ? <p className="text-sm text-destructive">Remove out-of-stock items before paying.</p> : null}
         <Button
-          disabled={!addressId || !quote.data || !cart.data?.lines.length || outOfStock || place.isPending}
+          disabled={
+            (physical && (!addressId || !quote.data)) ||
+            !cart.data?.lines.length ||
+            outOfStock ||
+            place.isPending
+          }
           onClick={() => {
-            if (!addressId || !quote.data) return;
-            place.mutate({ addressId, shippingZoneId: quote.data.zone.id });
+            if (physical) {
+              if (!addressId || !quote.data) return;
+              place.mutate({ addressId, shippingZoneId: quote.data.zone.id });
+              return;
+            }
+            place.mutate({});
           }}
         >
           {place.isPending ? "Placing order" : "Continue to PromptPay"}

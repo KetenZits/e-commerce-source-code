@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { bahtToSatang, formatMoney } from "@/lib/money";
 import { asAttributes } from "@/lib/product";
+import type { StoreMode } from "@/lib/storefront-config";
 import { productFormSchema, variantInputSchema } from "@/server/schemas";
 import { trpc } from "@/trpc/client";
 
@@ -38,19 +39,25 @@ export function ProductForm({
   id,
   categories,
   defaultValues,
+  storeMode = "physical",
 }: {
   id?: string;
   categories: { id: string; name: string }[];
   defaultValues: BackendForm;
+  storeMode?: StoreMode;
 }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [step, setStep] = useState(0);
   const [sizes, setSizes] = useState(
-    () => uniqueAttr(defaultValues.variants, "size").join(", ") || "S, M, L"
+    () =>
+      uniqueAttr(defaultValues.variants, "size").join(", ") ||
+      (storeMode === "digital" ? "PC, PlayStation, Xbox" : "S, M, L")
   );
   const [colors, setColors] = useState(
-    () => uniqueAttr(defaultValues.variants, "color").join(", ") || "Natural, Ink"
+    () =>
+      uniqueAttr(defaultValues.variants, "color").join(", ") ||
+      (storeMode === "digital" ? "Global, Thailand" : "Natural, Ink")
   );
   const [uploading, setUploading] = useState(false);
   const restored = useRef(false);
@@ -123,7 +130,11 @@ export function ProductForm({
     const sizeList = splitList(sizes);
     const colorList = splitList(colors);
     if (sizeList.length === 0 && colorList.length === 0) {
-      toast.error("Enter at least one size or color");
+      toast.error(
+        storeMode === "digital"
+          ? "Enter at least one platform or region"
+          : "Enter at least one size or color",
+      );
       return;
     }
     const current = form.getValues("variants");
@@ -295,24 +306,41 @@ export function ProductForm({
                   <Input {...form.register("currency")} className="font-tabular" />
                 </Field>
                 <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-                  Stock, weight, and any variant-specific prices are edited in the next step.
+                  {storeMode === "digital"
+                    ? "Availability and any variant-specific prices are edited in the next step."
+                    : "Stock, weight, and any variant-specific prices are edited in the next step."}
                 </div>
               </div>
             ) : null}
 
             {step === 3 ? (
               <div className="space-y-4">
-                <SectionTitle title="Variants" text="Generate a size × color matrix, then set price and stock per SKU." />
+                <SectionTitle
+                  title="Variants"
+                  text={
+                    storeMode === "digital"
+                      ? "Generate a platform × region matrix, then set price and availability per SKU."
+                      : "Generate a size × color matrix, then set price and stock per SKU."
+                  }
+                />
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Field label="Sizes">
-                    <Input value={sizes} onChange={(event) => setSizes(event.target.value)} placeholder="S, M, L" />
+                  <Field label={storeMode === "digital" ? "Platforms" : "Sizes"}>
+                    <Input
+                      value={sizes}
+                      onChange={(event) => setSizes(event.target.value)}
+                      placeholder={storeMode === "digital" ? "PC, PlayStation" : "S, M, L"}
+                    />
                   </Field>
-                  <Field label="Colors">
-                    <Input value={colors} onChange={(event) => setColors(event.target.value)} placeholder="Natural, Ink" />
+                  <Field label={storeMode === "digital" ? "Regions" : "Colors"}>
+                    <Input
+                      value={colors}
+                      onChange={(event) => setColors(event.target.value)}
+                      placeholder={storeMode === "digital" ? "Global, Thailand" : "Natural, Ink"}
+                    />
                   </Field>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={generateMatrix}>
-                  Generate size × color grid
+                  Generate {storeMode === "digital" ? "platform × region" : "size × color"} grid
                 </Button>
                 <div className="space-y-3">
                   {variants.fields.map((field, index) => {
@@ -321,7 +349,7 @@ export function ProductForm({
                       <div key={field.id} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-3">
                         <Input placeholder="SKU" className="font-tabular" {...form.register(`variants.${index}.sku`)} />
                         <Input
-                          placeholder="Size"
+                          placeholder={storeMode === "digital" ? "Platform" : "Size"}
                           defaultValue={attrs.size ?? ""}
                           onBlur={(event) => {
                             const current = asAttributes(form.getValues(`variants.${index}.attributes`));
@@ -329,7 +357,7 @@ export function ProductForm({
                           }}
                         />
                         <Input
-                          placeholder="Color"
+                          placeholder={storeMode === "digital" ? "Region" : "Color"}
                           defaultValue={attrs.color ?? ""}
                           onBlur={(event) => {
                             const current = asAttributes(form.getValues(`variants.${index}.attributes`));
@@ -349,12 +377,14 @@ export function ProductForm({
                           className="font-tabular"
                           {...form.register(`variants.${index}.stockQty`, { valueAsNumber: true })}
                         />
+                        {storeMode === "physical" ? (
                         <Input
                           type="number"
                           placeholder="Weight grams"
                           className="font-tabular"
                           {...form.register(`variants.${index}.weightGrams`, { valueAsNumber: true })}
                         />
+                        ) : null}
                         <Input
                           placeholder="Variant image URL (optional)"
                           className="sm:col-span-2"
@@ -374,10 +404,13 @@ export function ProductForm({
                   onClick={() =>
                     variants.append({
                       sku: "NEW-SKU",
-                      attributes: { size: "M", color: "Natural" },
+                      attributes:
+                        storeMode === "digital"
+                          ? { size: "PC", color: "Global" }
+                          : { size: "M", color: "Natural" },
                       priceBaht: form.getValues("basePriceBaht") || 100,
                       stockQty: 0,
-                      weightGrams: 200,
+                      weightGrams: storeMode === "digital" ? 0 : 200,
                       imageUrl: "",
                     })
                   }

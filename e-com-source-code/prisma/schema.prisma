@@ -29,6 +29,11 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum FulfillmentType {
+  PHYSICAL
+  DIGITAL
+}
+
 enum NotificationStatus {
   QUEUED
   SENT
@@ -197,6 +202,7 @@ model Order {
   userId          String
   addressId       String?
   status          OrderStatus @default(PENDING)
+  fulfillmentType FulfillmentType @default(PHYSICAL)
   subtotalCents   Int
   shippingFeeCents Int
   totalCents      Int
@@ -210,6 +216,8 @@ model Order {
   shippingCarrier String?
   shippingName    String?
   estimatedDelivery String?
+  digitalDeliveryEncrypted String? @db.Text
+  digitalDeliveredAt DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

@@ -65,6 +65,41 @@ export const productRouter = router({
     return { ...product, images: productImages(product.images) };
   }),
 
+  related: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string(),
+        excludeId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const products = await ctx.db.product.findMany({
+        where: {
+          status: "PUBLISHED",
+          id: { not: input.excludeId },
+        },
+        include: { category: true, variants: true },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+      });
+      return products
+        .sort(
+          (a, b) =>
+            Number(b.categoryId === input.categoryId) -
+            Number(a.categoryId === input.categoryId),
+        )
+        .slice(0, 8)
+        .map((product) => ({
+          ...product,
+          images: productImages(product.images),
+          inStock: product.variants.some((variant) => variant.stockQty > 0),
+          minPriceCents: Math.min(
+            ...product.variants.map((variant) => variant.priceCents),
+            product.basePriceCents,
+          ),
+        }));
+    }),
+
   byIds: publicProcedure
     .input(z.object({ ids: z.array(z.string()).max(100) }))
     .query(async ({ ctx, input }) => {

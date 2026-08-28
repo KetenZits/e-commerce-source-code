@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
+import { TiltCard } from "@/components/motion/tilt-card";
 
 export type ProductTileData = {
   id: string;
@@ -20,26 +21,30 @@ export type ProductTileData = {
   category?: { name: string };
 };
 
-export function ProductTile({ product, className }: { product: ProductTileData; className?: string }) {
+export function ProductTile({
+  product,
+  className,
+  priority = false,
+}: {
+  product: ProductTileData;
+  className?: string;
+  priority?: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
   const reduceMotion = useReducedMotion();
   const primaryImage = product.images[0];
   const alternateImage = product.images[1];
 
   return (
-    <motion.article
-      className={cn(
-        "group relative overflow-hidden rounded-xl border border-border bg-card",
-        className
-      )}
-      whileHover={reduceMotion ? undefined : { y: -4 }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-    >
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+    <TiltCard className={cn("h-full", className)} innerClassName="h-full">
+      <motion.article
+        className="premium-depth group relative h-full transform-3d overflow-hidden rounded-xl border border-border bg-card"
+        onHoverStart={() => setHovered(true)}
+        onHoverEnd={() => setHovered(false)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
+      >
+      <div className="relative aspect-4/5 transform-[translateZ(14px)] overflow-hidden bg-muted">
         <Link
           href={`/products/${product.slug}`}
           aria-label={`View ${product.title} image`}
@@ -55,6 +60,7 @@ export function ProductTile({ product, className }: { product: ProductTileData; 
               src={primaryImage}
               alt={product.title}
               fill
+              priority={priority}
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               className="object-cover"
             />
@@ -71,6 +77,7 @@ export function ProductTile({ product, className }: { product: ProductTileData; 
               src={alternateImage}
               alt={`${product.title}, alternate view`}
               fill
+              loading="lazy"
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               className="object-cover"
             />
@@ -86,7 +93,7 @@ export function ProductTile({ product, className }: { product: ProductTileData; 
           </span>
         ) : null}
       </div>
-      <div className="space-y-1 px-4 py-4">
+      <div className="transform-[translateZ(9px)] space-y-1 px-4 py-4">
         <p className="eyebrow">{product.brand}</p>
         <h3 className="font-display text-lg leading-snug">
           <Link href={`/products/${product.slug}`}>{product.title}</Link>
@@ -95,6 +102,7 @@ export function ProductTile({ product, className }: { product: ProductTileData; 
           {formatMoney(product.minPriceCents, product.currency)}
         </p>
       </div>
-    </motion.article>
+      </motion.article>
+    </TiltCard>
   );
 }

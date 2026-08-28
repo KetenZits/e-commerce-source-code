@@ -20,15 +20,20 @@ function safeExt(name: string) {
   return ["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext) ? ext : "jpg";
 }
 
-export async function uploadProductImage(originalName: string, body: Buffer, contentType: string) {
+export async function uploadProductImage(
+  originalName: string,
+  body: Buffer,
+  contentType: string,
+  area: "products" | "marketing" = "products",
+) {
   const filename = `${nanoid()}.${safeExt(originalName)}`;
-  const key = `products/${filename}`;
+  const key = `${area}/${filename}`;
 
   if (!hasR2()) {
-    const dir = join(process.cwd(), "public", "uploads", "products");
+    const dir = join(process.cwd(), "public", "uploads", area);
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, filename), body);
-    return `/uploads/products/${filename}`;
+    return `/uploads/${area}/${filename}`;
   }
 
   await client().send(

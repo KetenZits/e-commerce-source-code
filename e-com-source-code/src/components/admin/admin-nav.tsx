@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import type { StoreMode } from "@/lib/storefront-config";
 
 const LINKS = [
   { href: "/admin", label: "Dashboard" },
@@ -11,14 +12,19 @@ const LINKS = [
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/shipping", label: "Shipping" },
   { href: "/admin/payments", label: "Payments" },
+  { href: "/admin/storefront", label: "Storefront" },
 ];
 
-export function AdminNav() {
+export function AdminNav({ storeMode }: { storeMode: StoreMode }) {
   const pathname = usePathname();
+  const links =
+    storeMode === "digital"
+      ? LINKS.filter((link) => link.href !== "/admin/shipping")
+      : LINKS;
   return (
     <aside className="w-full border-b border-border lg:w-48 lg:border-r lg:border-b-0">
       <div className="flex gap-1 overflow-x-auto p-3 lg:flex-col">
-        {LINKS.map((link) => {
+        {links.map((link) => {
           const active = link.href === "/admin" ? pathname === "/admin" : pathname.startsWith(link.href);
           return (
             <Link

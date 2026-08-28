@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SectionDivider } from "@/components/section-divider";
 import { formatMoney } from "@/lib/money";
+import type { StoreMode } from "@/lib/storefront-config";
 import { trpc } from "@/trpc/client";
 
-export function CartView() {
+export function CartView({ storeMode }: { storeMode: StoreMode }) {
   const utils = trpc.useUtils();
   const reduceMotion = useReducedMotion();
   const cart = trpc.cart.get.useQuery();
@@ -159,8 +160,10 @@ export function CartView() {
             <span className="font-tabular">{formatMoney(cart.data.subtotalCents)}</span>
           </div>
           <div className="flex justify-between text-muted-foreground">
-            <span>Shipping</span>
-            <span>Calculated at checkout</span>
+            <span>{storeMode === "digital" ? "Digital delivery" : "Shipping"}</span>
+            <span>
+              {storeMode === "digital" ? "No delivery fee" : "Calculated at checkout"}
+            </span>
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Discount</span>

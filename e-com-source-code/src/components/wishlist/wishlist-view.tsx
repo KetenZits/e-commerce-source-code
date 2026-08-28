@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Heart } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ProductTile } from "@/components/product/product-tile";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/components/wishlist/wishlist-provider";
 import { trpc } from "@/trpc/client";
 
 export function WishlistView() {
+  const reduceMotion = useReducedMotion();
   const { ids, hydrated } = useWishlist();
   const products = trpc.product.byIds.useQuery(
     { ids },
@@ -22,7 +23,7 @@ export function WishlistView() {
   if (ids.length === 0) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="rounded-xl border border-border bg-card px-6 py-16 text-center"
       >
@@ -40,9 +41,12 @@ export function WishlistView() {
   }
 
   return (
-    <motion.div layout className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <motion.div
+      layout={!reduceMotion}
+      className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
+    >
       {products.data?.map((product) => (
-        <motion.div layout key={product.id}>
+        <motion.div layout={!reduceMotion} key={product.id}>
           <ProductTile product={product} />
         </motion.div>
       ))}

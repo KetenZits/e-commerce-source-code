@@ -2,6 +2,7 @@
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
+import { MotionConfig } from "framer-motion";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { createQueryClient, createTrpcClient, trpc } from "@/trpc/client";
@@ -15,7 +16,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <WishlistProvider>{children}</WishlistProvider>
+          <MotionConfig reducedMotion="user">
+            <WishlistProvider>{children}</WishlistProvider>
+          </MotionConfig>
           <Toaster
             theme="light"
             position="bottom-right"

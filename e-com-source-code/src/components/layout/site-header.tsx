@@ -24,9 +24,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { SITE_NAME } from "@/lib/constants";
+import type { StoreMode } from "@/lib/storefront-config";
 import { useState } from "react";
 
-const TABS = [
+const BASE_TABS = [
   { href: "/catalog", label: "Shop" },
   { href: "/categories", label: "Collections" },
   { href: "/#featured", label: "Featured" },
@@ -34,20 +35,31 @@ const TABS = [
   { href: "/shipping", label: "Shipping" },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({
+  siteName = SITE_NAME,
+  storeMode = "physical",
+}: {
+  siteName?: string;
+  storeMode?: StoreMode;
+}) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const tabs = BASE_TABS.map((tab) =>
+    tab.href === "/shipping"
+      ? { ...tab, label: storeMode === "digital" ? "Digital delivery" : "Shipping" }
+      : tab,
+  );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
         <Link href="/" className="font-display mr-1 flex items-center gap-2 text-lg tracking-tight">
           <span className="size-1.5 rotate-45 bg-brass" aria-hidden />
-          {SITE_NAME}
+          {siteName}
         </Link>
         <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const active =
               tab.href === "/#featured"
                 ? false
@@ -103,13 +115,13 @@ export function SiteHeader() {
           </DialogTrigger>
           <DialogContent className="fixed top-0 right-0 left-auto h-full max-h-none w-72 max-w-none translate-x-0 translate-y-0 rounded-none border-y-0 border-l border-border sm:max-w-none">
             <DialogHeader>
-              <DialogTitle className="font-display">{SITE_NAME}</DialogTitle>
+              <DialogTitle className="font-display">{siteName}</DialogTitle>
               <DialogDescription className="sr-only">Store navigation</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <NavSearch onSubmit={() => setOpen(false)} />
               <nav className="flex flex-col gap-1">
-                {TABS.map((tab) => (
+                {tabs.map((tab) => (
                   <Link
                     key={tab.href}
                     href={tab.href}

@@ -1,5 +1,6 @@
 import { PackageCheck, RotateCcw, Truck } from "lucide-react";
-import { Reveal } from "@/components/motion/reveal";
+import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
+import { TiltCard } from "@/components/motion/tilt-card";
 
 const ITEMS = [
   {
@@ -21,18 +22,18 @@ const ITEMS = [
 
 export function ShippingInfo() {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {ITEMS.map((item, index) => (
-        <Reveal
-          key={item.title}
-          delay={index * 70}
-          className="rounded-xl border border-border bg-card p-5"
-        >
+    <StaggerRoot className="grid gap-4 md:grid-cols-3">
+      {ITEMS.map((item) => (
+        <StaggerItem key={item.title}>
+          <TiltCard className="h-full" intensity={5}>
+        <article className="premium-depth h-full rounded-xl border border-border bg-card/90 p-5 backdrop-blur-sm">
           <item.icon className="size-5 text-primary" />
           <h3 className="font-display mt-4 text-lg">{item.title}</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.text}</p>
-        </Reveal>
+        </article>
+          </TiltCard>
+        </StaggerItem>
       ))}
-    </div>
+    </StaggerRoot>
   );
 }

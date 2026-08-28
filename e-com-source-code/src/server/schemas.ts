@@ -38,8 +38,8 @@ export const cartItemSchema = z.object({
 });
 
 export const checkoutSchema = z.object({
-  addressId: z.string().min(1),
-  shippingZoneId: z.string().min(1),
+  addressId: z.string().min(1).optional(),
+  shippingZoneId: z.string().min(1).optional(),
 });
 
 export const orderIdSchema = z.object({
@@ -103,4 +103,59 @@ export const paymentSettingsSchema = z.object({
     .regex(/^[0-9]+$/, "Use a Thai mobile number or national ID, digits only"),
   accountName: z.string().min(2).max(80),
   paymentMode: z.enum(["demo", "live"]),
+});
+
+const contentField = z.string().trim().min(1).max(500);
+const linkField = z.string().trim().startsWith("/").max(200);
+
+export const storefrontSettingsSchema = z.object({
+  storeMode: z.enum(["physical", "digital"]),
+  siteName: z.string().trim().min(2).max(80),
+  siteTagline: z.string().trim().min(2).max(180),
+  hero: z.object({
+    eyebrow: contentField,
+    title: z.string().trim().min(2).max(160),
+    body: z.string().trim().min(2).max(600),
+    imageUrl: z.string().trim().max(2000),
+    primaryLabel: contentField,
+    primaryHref: linkField,
+    secondaryLabel: contentField,
+    secondaryHref: linkField,
+  }),
+  home: z.object({
+    featuredEyebrow: contentField,
+    featuredTitle: contentField,
+    newTitle: contentField,
+    collectionsTitle: contentField,
+    features: z
+      .array(
+        z.object({
+          eyebrow: contentField,
+          title: contentField,
+          text: z.string().trim().min(2).max(400),
+        }),
+      )
+      .length(3),
+  }),
+  catalog: z.object({
+    eyebrow: contentField,
+    title: contentField,
+    body: z.string().trim().min(2).max(600),
+  }),
+  collections: z.object({
+    eyebrow: contentField,
+    title: contentField,
+    body: z.string().trim().min(2).max(600),
+  }),
+  delivery: z.object({
+    physicalTitle: contentField,
+    physicalBody: z.string().trim().min(2).max(600),
+    digitalTitle: contentField,
+    digitalBody: z.string().trim().min(2).max(600),
+  }),
+});
+
+export const digitalDeliverySchema = z.object({
+  orderId: z.string().min(1),
+  content: z.string().trim().min(4).max(10000),
 });

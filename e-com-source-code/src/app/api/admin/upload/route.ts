@@ -9,6 +9,10 @@ export async function POST(request: Request) {
   }
 
   const form = await request.formData();
+  const area =
+    new URL(request.url).searchParams.get("area") === "marketing"
+      ? "marketing"
+      : "products";
   const file = form.get("file");
   if (!(file instanceof File)) {
     return Response.json({ error: "Choose an image file." }, { status: 400 });
@@ -17,6 +21,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Images must be under 8 MB." }, { status: 400 });
   }
 
-  const url = await uploadProductImage(file.name, Buffer.from(await file.arrayBuffer()), file.type);
+  const url = await uploadProductImage(
+    file.name,
+    Buffer.from(await file.arrayBuffer()),
+    file.type,
+    area,
+  );
   return Response.json({ url });
 }

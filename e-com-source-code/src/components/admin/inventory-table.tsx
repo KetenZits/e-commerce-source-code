@@ -5,10 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/trpc/client";
+import type { StoreMode } from "@/lib/storefront-config";
 
 export function InventoryTable({
   rows,
+  storeMode,
 }: {
+  storeMode: StoreMode;
   rows: {
     id: string;
     sku: string;
@@ -41,7 +44,11 @@ export function InventoryTable({
             <p className="text-sm">{row.product.title}</p>
             <p className="font-tabular text-xs text-muted-foreground">{row.sku}</p>
           </div>
-          {row.low ? <span className="text-xs text-destructive">Low stock</span> : null}
+          {row.low ? (
+            <span className="text-xs text-destructive">
+              Low {storeMode === "digital" ? "availability" : "stock"}
+            </span>
+          ) : null}
           <Input name="qty" type="number" defaultValue={row.stockQty} className="font-tabular w-20" />
           <Button size="sm" type="submit">
             Save

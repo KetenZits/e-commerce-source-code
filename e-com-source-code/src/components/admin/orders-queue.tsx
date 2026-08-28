@@ -8,6 +8,7 @@ import { OrderActions } from "@/components/admin/order-actions";
 type OrderRow = {
   id: string;
   status: string;
+  fulfillmentType: string;
   slipUncertain: boolean;
   totalCents: number;
   promptpayRef: string;
