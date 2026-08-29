@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 const VERSION = "v1";
 
 function encryptionKey() {
-  return createHash("sha256").update(env.NEXTAUTH_SECRET).digest();
+  return createHash("sha256").update(env.DIGITAL_SECRETS_KEY).digest();
 }
 
 export function encryptDigitalDelivery(content: string) {

@@ -1,8 +1,18 @@
+"use client";
+
 // Component created by Dominik Koch
 // https://x.com/dominikkoch
 
+import Image from 'next/image';
 import { useMemo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { motion, useMotionValue, useTransform, animate, MotionValue } from 'motion/react';
+import {
+  animate,
+  motion,
+  type MotionValue,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from 'framer-motion';
 
 type OrbitShape =
   | 'ellipse'
@@ -163,7 +173,7 @@ export default function OrbitImages({
   direction = 'normal',
   fill = true,
   width = 100,
-  height = 100,
+  height = 'auto',
   className = '',
   showPath = false,
   pathColor = 'rgba(0,0,0,0.1)',
@@ -175,6 +185,7 @@ export default function OrbitImages({
 }: OrbitImagesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const designCenterX = baseWidth / 2;
   const designCenterY = baseWidth / 2;
@@ -221,7 +232,7 @@ export default function OrbitImages({
   const progress = useMotionValue(0);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || reduceMotion) return;
     const controls = animate(progress, direction === 'reverse' ? -100 : 100, {
       duration,
       ease: easing,
@@ -229,19 +240,33 @@ export default function OrbitImages({
       repeatType: 'loop',
     });
     return () => controls.stop();
-  }, [progress, duration, easing, direction, paused]);
+  }, [progress, duration, easing, direction, paused, reduceMotion]);
 
   const containerWidth = responsive ? '100%' : (typeof width === 'number' ? width : '100%');
-  const containerHeight = responsive ? 'auto' : (typeof height === 'number' ? height : (typeof width === 'number' ? width : 'auto'));
+  const containerHeight = responsive
+    ? typeof height === 'number'
+      ? height
+      : 'auto'
+    : typeof height === 'number'
+      ? height
+      : typeof width === 'number'
+        ? width
+        : 'auto';
 
   const items = images.map((src, index) => (
-    <img
-      key={src}
-      src={src}
-      alt={`${altPrefix} ${index + 1}`}
-      draggable={false}
-      className="w-full h-full object-contain"
-    />
+    <span
+      key={`${src}-${index}`}
+      className="relative block size-full overflow-hidden rounded-full border border-border/70 bg-card shadow-sm"
+    >
+      <Image
+        src={src}
+        alt={`${altPrefix} ${index + 1}`}
+        draggable={false}
+        fill
+        sizes={`${itemSize}px`}
+        className="object-cover"
+      />
+    </span>
   ));
 
   return (
@@ -251,7 +276,7 @@ export default function OrbitImages({
       style={{
         width: containerWidth,
         height: containerHeight,
-        aspectRatio: responsive ? '1 / 1' : undefined,
+        aspectRatio: responsive && height === 'auto' ? '1 / 1' : undefined,
       }}
       aria-hidden="true"
     >

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { nanoid } from "nanoid";
 import type { Context } from "@/server/context";
+import { isProduction } from "@/lib/env";
 
 export async function ensureCartSession(ctx: Context) {
   if (ctx.session?.user?.id) return { userId: ctx.session.user.id, sessionId: null as string | null };
@@ -10,6 +11,7 @@ export async function ensureCartSession(ctx: Context) {
   jar.set("cart_sid", sessionId, {
     httpOnly: true,
     sameSite: "lax",
+    secure: isProduction(),
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

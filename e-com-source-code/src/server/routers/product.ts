@@ -4,6 +4,7 @@ import { catalogQuerySchema } from "@/server/schemas";
 import { publicProcedure, router } from "@/server/trpc";
 import { searchProductIds } from "@/server/services/search";
 import { productImages } from "@/lib/product";
+import { availableQty } from "@/server/services/inventory";
 
 export const productRouter = router({
   list: publicProcedure.input(catalogQuerySchema).query(async ({ ctx, input }) => {
@@ -28,32 +29,44 @@ export const productRouter = router({
         });
       }
     }
+    if (input.minPrice != null) {
+      and.push({ variants: { some: { priceCents: { gte: input.minPrice } } } });
+    }
+    if (input.maxPrice != null) {
+      and.push({ variants: { some: { priceCents: { lte: input.maxPrice } } } });
+    }
     if (and.length) where.AND = and;
 
+    const orderBy: Prisma.ProductOrderByWithRelationInput =
+      input.sort === "newest" ? { createdAt: "desc" } : { createdAt: "desc" };
+
+    const total = await ctx.db.product.count({ where });
     const products = await ctx.db.product.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      take: 60,
+      orderBy,
+      skip: (input.page - 1) * input.pageSize,
+      take: input.pageSize,
       include: { category: true, variants: true },
     });
 
-    const mapped = products.map((product) => ({
+    const items = products.map((product) => ({
       ...product,
       images: productImages(product.images),
-      inStock: product.variants.some((variant) => variant.stockQty > 0),
+      inStock: product.variants.some(
+        (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
+      ),
       minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
     }));
-    const filtered = mapped.filter(
-      (product) =>
-        (input.minPrice == null || product.minPriceCents >= input.minPrice) &&
-        (input.maxPrice == null || product.minPriceCents <= input.maxPrice)
-    );
-    if (input.sort === "price-asc") {
-      filtered.sort((a, b) => a.minPriceCents - b.minPriceCents);
-    } else if (input.sort === "price-desc") {
-      filtered.sort((a, b) => b.minPriceCents - a.minPriceCents);
-    }
-    return filtered;
+    if (input.sort === "price-asc") items.sort((a, b) => a.minPriceCents - b.minPriceCents);
+    if (input.sort === "price-desc") items.sort((a, b) => b.minPriceCents - a.minPriceCents);
+
+    return {
+      items,
+      total,
+      page: input.page,
+      pageSize: input.pageSize,
+      pageCount: Math.max(1, Math.ceil(total / input.pageSize)),
+    };
   }),
 
   bySlug: publicProcedure.input(z.object({ slug: z.string() })).query(async ({ ctx, input }) => {
@@ -62,7 +75,23 @@ export const productRouter = router({
       include: { category: true, variants: true },
     });
     if (!product) return null;
-    return { ...product, images: productImages(product.images) };
+    const reviews = await ctx.db.review.findMany({
+      where: { productId: product.id, status: "PUBLISHED" },
+      include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    const rating =
+      reviews.length === 0
+        ? null
+        : reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+    return {
+      ...product,
+      images: productImages(product.images),
+      reviews,
+      rating,
+      reviewCount: reviews.length,
+    };
   }),
 
   related: publicProcedure
@@ -92,7 +121,9 @@ export const productRouter = router({
         .map((product) => ({
           ...product,
           images: productImages(product.images),
-          inStock: product.variants.some((variant) => variant.stockQty > 0),
+          inStock: product.variants.some(
+            (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
+          ),
           minPriceCents: Math.min(
             ...product.variants.map((variant) => variant.priceCents),
             product.basePriceCents,
@@ -113,7 +144,9 @@ export const productRouter = router({
         .map((product) => ({
           ...product,
           images: productImages(product.images),
-          inStock: product.variants.some((variant) => variant.stockQty > 0),
+          inStock: product.variants.some(
+            (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
+          ),
           minPriceCents: Math.min(
             ...product.variants.map((variant) => variant.priceCents),
             product.basePriceCents
@@ -132,14 +165,16 @@ export const productRouter = router({
     return products.map((product) => ({
       ...product,
       images: productImages(product.images),
-      inStock: product.variants.some((variant) => variant.stockQty > 0),
+      inStock: product.variants.some(
+        (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
+      ),
       minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
     }));
   }),
 
   filters: publicProcedure.query(async ({ ctx }) => {
     const [categories, brands] = await Promise.all([
-      ctx.db.category.findMany({ orderBy: { name: "asc" } }),
+      ctx.db.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
       ctx.db.product.findMany({
         where: { status: "PUBLISHED" },
         select: { brand: true },

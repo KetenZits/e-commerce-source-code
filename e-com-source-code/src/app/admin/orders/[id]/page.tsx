@@ -53,7 +53,7 @@ export default async function AdminOrderDetailPage({
         <div>
           <p className="eyebrow">Order</p>
           <h1 className="font-tabular mt-2 text-2xl">{order.promptpayRef}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{order.user.email}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{order.user?.email ?? order.guestEmail ?? "Guest checkout"}</p>
         </div>
         <div className="space-y-2 text-right">
           <StatusChip tone={tone[order.status] ?? "muted"}>

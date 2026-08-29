@@ -1,11 +1,26 @@
 import { z } from "zod";
 
+const isProd = process.env.NODE_ENV === "production";
 const optional = z.string().optional().default("");
 
+function requiredInProd(value: string | undefined, fallback = "") {
+  if (value) return value;
+  if (isProd) return "";
+  return fallback;
+}
+
 export const env = {
+  NODE_ENV: process.env.NODE_ENV ?? "development",
   DATABASE_URL: process.env.DATABASE_URL ?? "",
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "dev-secret-change-me-in-production",
+  NEXTAUTH_SECRET: requiredInProd(
+    process.env.NEXTAUTH_SECRET,
+    "dev-secret-change-me-in-production",
+  ),
   NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+  DIGITAL_SECRETS_KEY: requiredInProd(
+    process.env.DIGITAL_SECRETS_KEY,
+    process.env.NEXTAUTH_SECRET ?? "dev-secret-change-me-in-production",
+  ),
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",
   PROMPTPAY_ID: process.env.PROMPTPAY_ID ?? "0812345678",
@@ -32,10 +47,32 @@ export const env = {
 
 export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  NEXTAUTH_SECRET: z.string().min(1),
+  NEXTAUTH_SECRET: z.string().min(16),
+  DIGITAL_SECRETS_KEY: z.string().min(16),
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
 });
+
+export function isProduction() {
+  return isProd;
+}
+
+export function validateRuntimeEnv() {
+  const missing: string[] = [];
+  if (!env.DATABASE_URL) missing.push("DATABASE_URL");
+  if (!env.NEXTAUTH_SECRET || env.NEXTAUTH_SECRET === "dev-secret-change-me-in-production") {
+    missing.push("NEXTAUTH_SECRET");
+  }
+  if (!env.DIGITAL_SECRETS_KEY || env.DIGITAL_SECRETS_KEY === "dev-secret-change-me-in-production") {
+    missing.push("DIGITAL_SECRETS_KEY");
+  }
+  if (missing.length && isProd) {
+    throw new Error(
+      `Production is fail-closed. Set ${missing.join(", ")} before starting the server.`,
+    );
+  }
+  return { ok: missing.length === 0, missing };
+}
 
 export function hasGoogleOAuth() {
   return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);

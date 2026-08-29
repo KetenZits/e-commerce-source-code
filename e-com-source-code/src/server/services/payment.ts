@@ -1,8 +1,9 @@
 import generatePayload from "promptpay-qr";
 import QRCode from "qrcode";
-import { env } from "@/lib/env";
+import { env, isProduction } from "@/lib/env";
 import { getPaymentConfig } from "@/lib/payment-config";
 import { satangToBaht } from "@/lib/money";
+import { logger } from "@/lib/logger";
 
 export async function promptPayQr(amountCents: number, promptpayId?: string) {
   const id = promptpayId || (await getPaymentConfig()).promptpayId;
@@ -20,6 +21,7 @@ export type SlipResult = {
   uncertain: boolean;
   amountSatang?: number;
   raw?: unknown;
+  externalRef?: string | null;
 };
 
 export async function verifySlip(opts: {
@@ -28,6 +30,10 @@ export async function verifySlip(opts: {
 }): Promise<SlipResult> {
   const config = await getPaymentConfig();
   if (config.paymentMode === "demo") {
+    if (isProduction()) {
+      logger.error("Demo payment mode is blocked in production");
+      return { ok: false, uncertain: false, raw: { reason: "Demo payments are disabled in production" } };
+    }
     return { ok: true, uncertain: false, amountSatang: opts.expectedAmountCents, raw: { mode: "demo" } };
   }
 
@@ -42,7 +48,12 @@ export async function verifySlip(opts: {
       });
       const raw = await res.json();
       if (!res.ok) return { ok: false, uncertain: true, raw };
-      return { ok: Boolean(raw?.success), uncertain: !raw?.success, raw };
+      return {
+        ok: Boolean(raw?.success),
+        uncertain: !raw?.success,
+        raw,
+        externalRef: typeof raw?.transRef === "string" ? raw.transRef : null,
+      };
     } catch (error) {
       return { ok: false, uncertain: true, raw: { error: String(error) } };
     }
@@ -60,7 +71,12 @@ export async function verifySlip(opts: {
       });
       const raw = await res.json();
       if (!res.ok) return { ok: false, uncertain: true, raw };
-      return { ok: Boolean(raw?.data), uncertain: !raw?.data, raw };
+      return {
+        ok: Boolean(raw?.data),
+        uncertain: !raw?.data,
+        raw,
+        externalRef: typeof raw?.data?.transRef === "string" ? raw.data.transRef : null,
+      };
     } catch (error) {
       return { ok: false, uncertain: true, raw: { error: String(error) } };
     }

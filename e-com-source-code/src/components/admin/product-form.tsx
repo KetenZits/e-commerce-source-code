@@ -27,6 +27,7 @@ const editorVariantSchema = variantInputSchema
 const editorSchema = productFormSchema
   .omit({ basePriceCents: true, variants: true })
   .extend({
+    fulfillmentType: z.enum(["PHYSICAL", "DIGITAL"]),
     basePriceBaht: z.number().positive(),
     variants: z.array(editorVariantSchema).min(1),
   });
@@ -234,6 +235,15 @@ export function ProductForm({
                       <option value="DRAFT">DRAFT</option>
                       <option value="PUBLISHED">PUBLISHED</option>
                       <option value="ARCHIVED">ARCHIVED</option>
+                    </select>
+                  </Field>
+                  <Field label="Fulfillment">
+                    <select
+                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+                      {...form.register("fulfillmentType")}
+                    >
+                      <option value="PHYSICAL">Physical</option>
+                      <option value="DIGITAL">Digital</option>
                     </select>
                   </Field>
                 </div>
@@ -504,6 +514,7 @@ function Field({
 function toEditor(form: BackendForm): EditorForm {
   return {
     ...form,
+    fulfillmentType: form.fulfillmentType ?? "PHYSICAL",
     basePriceBaht: form.basePriceCents / 100,
     variants: form.variants.map(({ priceCents, ...variant }) => ({
       ...variant,

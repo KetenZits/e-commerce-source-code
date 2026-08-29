@@ -16,6 +16,8 @@ export function InventoryTable({
     id: string;
     sku: string;
     stockQty: number;
+    reservedQty?: number;
+    availableQty?: number;
     low: boolean;
     product: { title: string };
   }[];
@@ -28,7 +30,16 @@ export function InventoryTable({
     },
   });
 
+  const importCodes = trpc.admin.importDigitalCodes.useMutation({
+    onSuccess: (result) => {
+      toast.message(`Imported ${result.count} code(s)`);
+      router.refresh();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   return (
+    <div className="space-y-6">
     <div className="space-y-2">
       {rows.map((row) => (
         <form
@@ -37,12 +48,15 @@ export function InventoryTable({
           onSubmit={(event) => {
             event.preventDefault();
             const qty = Number(new FormData(event.currentTarget).get("qty"));
-            adjust.mutate({ variantId: row.id, stockQty: qty });
+            adjust.mutate({ variantId: row.id, stockQty: qty, reason: "Manual adjustment" });
           }}
         >
           <div className="min-w-0 flex-1">
             <p className="text-sm">{row.product.title}</p>
-            <p className="font-tabular text-xs text-muted-foreground">{row.sku}</p>
+            <p className="font-tabular text-xs text-muted-foreground">
+              {row.sku}
+              {row.reservedQty ? ` · reserved ${row.reservedQty}` : ""}
+            </p>
           </div>
           {row.low ? (
             <span className="text-xs text-destructive">
@@ -55,6 +69,40 @@ export function InventoryTable({
           </Button>
         </form>
       ))}
+    </div>
+      <form
+        className="space-y-3 rounded-xl border border-border bg-card p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          importCodes.mutate({
+            variantId: String(data.get("variantId") ?? ""),
+            codes: String(data.get("codes") ?? "")
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean),
+          });
+        }}
+      >
+        <p className="text-sm font-medium">Import digital codes</p>
+        <select name="variantId" className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm" required>
+          {rows.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.product.title} · {row.sku}
+            </option>
+          ))}
+        </select>
+        <textarea
+          name="codes"
+          rows={5}
+          required
+          placeholder={"One code per line"}
+          className="w-full rounded-lg border border-input bg-transparent p-2 font-mono text-xs"
+        />
+        <Button size="sm" type="submit" disabled={importCodes.isPending}>
+          Import codes
+        </Button>
+      </form>
     </div>
   );
 }

@@ -13,7 +13,8 @@ type OrderRow = {
   totalCents: number;
   promptpayRef: string;
   createdAt: Date;
-  user: { email: string };
+  user: { email: string | null } | null;
+  guestEmail?: string | null;
   items: { quantity: number }[];
 };
 
@@ -47,7 +48,7 @@ export function OrdersQueue({ orders }: { orders: OrderRow[] }) {
               className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
             >
               <td className="font-tabular px-4 py-4">{order.promptpayRef}</td>
-              <td className="px-4 py-4 text-muted-foreground">{order.user.email}</td>
+              <td className="px-4 py-4 text-muted-foreground">{order.user?.email ?? order.guestEmail ?? "Guest"}</td>
               <td className="font-tabular px-4 py-4 text-xs text-muted-foreground">
                 {new Intl.DateTimeFormat("en-GB", {
                   day: "2-digit",

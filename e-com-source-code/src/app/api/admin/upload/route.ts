@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { uploadProductImage } from "@/server/services/storage";
+import { canManageCatalog } from "@/lib/roles";
+import { writeAuditLog } from "@/server/services/audit";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "ADMIN") {
+  if (!canManageCatalog(session?.user?.role)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,11 +23,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "Images must be under 8 MB." }, { status: 400 });
   }
 
-  const url = await uploadProductImage(
-    file.name,
-    Buffer.from(await file.arrayBuffer()),
-    file.type,
-    area,
-  );
-  return Response.json({ url });
+  try {
+    const url = await uploadProductImage(
+      file.name,
+      Buffer.from(await file.arrayBuffer()),
+      file.type,
+      area,
+    );
+    await writeAuditLog({
+      actorId: session?.user?.id,
+      action: "upload.image",
+      entityType: "File",
+      metadata: { area },
+    });
+    return Response.json({ url });
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Upload failed" },
+      { status: 400 },
+    );
+  }
 }

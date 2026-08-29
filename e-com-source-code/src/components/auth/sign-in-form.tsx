@@ -57,6 +57,12 @@ export function SignInForm({ google }: { google: boolean }) {
         </Button>
       ) : null}
       <p className="text-sm text-muted-foreground">
+        Forgot your password?{" "}
+        <Link href="/auth/forgot" className="text-primary">
+          Reset it
+        </Link>
+      </p>
+      <p className="text-sm text-muted-foreground">
         No account?{" "}
         <Link href="/auth/register" className="text-primary">
           Create one

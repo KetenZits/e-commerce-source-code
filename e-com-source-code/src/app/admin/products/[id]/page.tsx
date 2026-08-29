@@ -31,6 +31,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           currency: product.currency,
           images: productImages(product.images),
           status: product.status,
+          fulfillmentType: product.fulfillmentType === "DIGITAL" ? "DIGITAL" : "PHYSICAL",
           variants: product.variants.map((variant) => ({
             id: variant.id,
             sku: variant.sku,

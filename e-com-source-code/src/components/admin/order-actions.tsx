@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { bahtToSatang } from "@/lib/money";
 import { trpc } from "@/trpc/client";
 
 export type ActionableOrder = {
@@ -44,7 +45,15 @@ export function OrderActions({
     },
     onError: (error) => toast.error(error.message),
   });
-  const digital = order.fulfillmentType === "DIGITAL";
+  const refund = trpc.admin.refund.useMutation({
+    onSuccess: () => {
+      toast.message("Refund recorded");
+      router.refresh();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const hasDigital = order.fulfillmentType !== "PHYSICAL";
+  const hasPhysical = order.fulfillmentType !== "DIGITAL";
 
   function stop(event: MouseEvent) {
     event.stopPropagation();
@@ -69,7 +78,7 @@ export function OrderActions({
           </Button>
         </>
       ) : null}
-      {digital && ["PAID", "DELIVERED"].includes(order.status) ? (
+      {hasDigital && ["PAID", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? (
         detail ? (
           <form
             className="w-full max-w-2xl space-y-3 rounded-xl border border-primary/30 bg-card p-4"
@@ -115,7 +124,7 @@ export function OrderActions({
           </Button>
         )
       ) : null}
-      {!digital && order.status === "PAID" ? (
+      {hasPhysical && order.status === "PAID" ? (
         <Button
           size="sm"
           onClick={() => fulfill.mutate({ orderId: order.id, status: "PACKED" })}
@@ -123,7 +132,7 @@ export function OrderActions({
           Mark packed
         </Button>
       ) : null}
-      {!digital && order.status === "PACKED" ? (
+      {hasPhysical && order.status === "PACKED" ? (
         <form
           className="flex flex-wrap gap-2"
           onSubmit={(event) => {
@@ -148,13 +157,39 @@ export function OrderActions({
           <Button size="sm" type="submit">Mark shipped</Button>
         </form>
       ) : null}
-      {!digital && order.status === "SHIPPED" ? (
+      {hasPhysical && order.status === "SHIPPED" ? (
         <Button
           size="sm"
           onClick={() => fulfill.mutate({ orderId: order.id, status: "DELIVERED" })}
         >
           Mark delivered
         </Button>
+      ) : null}
+      {["PAID", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? (
+        <form
+          className="flex w-full max-w-xl flex-wrap gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const data = new FormData(event.currentTarget);
+            refund.mutate({
+              orderId: order.id,
+              amountCents: bahtToSatang(Number(data.get("amount"))),
+              reason: String(data.get("reason") ?? "Customer return"),
+              restock: data.get("restock") === "on",
+            });
+          }}
+        >
+          <Input name="amount" type="number" step="0.01" placeholder="Refund ฿" className="font-tabular w-28" required />
+          <Input name="reason" placeholder="Reason" className="w-40" required />
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" name="restock" defaultChecked />
+            Restock
+          </label>
+          <Button size="sm" type="submit" variant="outline" disabled={refund.isPending}>
+            Refund
+          </Button>
+        </form>
       ) : null}
     </div>
   );

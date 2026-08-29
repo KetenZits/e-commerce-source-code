@@ -1,35 +1,55 @@
 import { TRPCError } from "@trpc/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { env } from "@/lib/env";
 import { productImages } from "@/lib/product";
 import { getPaymentConfig, savePaymentConfig } from "@/lib/payment-config";
 import {
   getStorefrontConfig,
   saveStorefrontConfig,
 } from "@/lib/storefront-config";
+import { getTaxConfig, saveTaxConfig } from "@/lib/commerce-config";
 import {
+  categorySchema,
+  digitalCodeImportSchema,
   digitalDeliverySchema,
   fulfillSchema,
   paymentSettingsSchema,
   productFormSchema,
+  promotionSchema,
+  refundSchema,
+  reviewModerationSchema,
   shippingZoneSchema,
   stockAdjustSchema,
   storefrontSettingsSchema,
+  taxSettingsSchema,
 } from "@/server/schemas";
-import { adminProcedure, router } from "@/server/trpc";
-import { fulfillPaidOrder, notifyShipped } from "@/server/services/fulfillment";
+import {
+  adminProcedure,
+  catalogProcedure,
+  financeProcedure,
+  orderStaffProcedure,
+  staffProcedure,
+  router,
+} from "@/server/trpc";
+import {
+  completeRefund,
+  fulfillPaidOrder,
+  notifyShipped,
+} from "@/server/services/fulfillment";
 import {
   decryptDigitalDelivery,
   encryptDigitalDelivery,
 } from "@/server/services/digital-delivery";
-import { notify } from "@/server/services/notifications";
+import { importDigitalCodes } from "@/server/services/digital-codes";
+import { isLowStock, setStockAbsolute } from "@/server/services/inventory";
+import { notify, retryFailedNotifications } from "@/server/services/notifications";
 import { enqueue } from "@/server/queue";
+import { writeAuditLog } from "@/server/services/audit";
 import { Prisma } from "@/generated/prisma/client";
 import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
 
 export const adminRouter = router({
-  revenue: adminProcedure.query(async ({ ctx }) => {
+  revenue: staffProcedure.query(async ({ ctx }) => {
     const paid = await ctx.db.order.findMany({
       where: { status: { in: ["PAID", "PACKED", "SHIPPED", "DELIVERED"] } },
       include: { items: true },
@@ -80,36 +100,61 @@ export const adminRouter = router({
     };
   }),
 
-  products: adminProcedure.query(async ({ ctx }) => {
+  products: catalogProcedure.query(async ({ ctx }) => {
     return ctx.db.product.findMany({
       include: { category: true, variants: true },
       orderBy: { updatedAt: "desc" },
     });
   }),
 
-  productById: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+  productById: catalogProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     const product = await ctx.db.product.findUnique({
       where: { id: input.id },
-      include: { category: true, variants: true },
+      include: { category: true, variants: { include: { digitalCodes: { select: { id: true, status: true } } } } },
     });
     if (!product) return null;
     return { ...product, images: productImages(product.images) };
   }),
 
-  categories: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.category.findMany({ orderBy: { name: "asc" } });
+  categories: catalogProcedure.query(async ({ ctx }) => {
+    return ctx.db.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
   }),
 
-  upsertProduct: adminProcedure.input(productFormSchema.extend({ id: z.string().optional() })).mutation(async ({ ctx, input }) => {
+  upsertCategory: catalogProcedure.input(categorySchema).mutation(async ({ ctx, input }) => {
+    const { id, ...data } = input;
+    const saved = id
+      ? await ctx.db.category.update({ where: { id }, data })
+      : await ctx.db.category.create({ data });
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: id ? "category.updated" : "category.created",
+      entityType: "Category",
+      entityId: saved.id,
+      ipAddress: ctx.ip,
+    });
+    revalidatePath("/categories");
+    return saved;
+  }),
+
+  deleteCategory: catalogProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    const used = await ctx.db.product.count({ where: { categoryId: input.id } });
+    if (used > 0) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Move products out of this collection first." });
+    }
+    await ctx.db.category.delete({ where: { id: input.id } });
+    return { ok: true };
+  }),
+
+  upsertProduct: catalogProcedure.input(productFormSchema.extend({ id: z.string().optional() })).mutation(async ({ ctx, input }) => {
     const { id, variants, ...rest } = input;
     const product = await ctx.db.$transaction(async (tx) => {
       const saved = id
         ? await tx.product.update({
             where: { id },
-            data: { ...rest, images: rest.images },
+            data: { ...rest, images: rest.images, imageAltTexts: rest.imageAltTexts ?? [] },
           })
         : await tx.product.create({
-            data: { ...rest, images: rest.images },
+            data: { ...rest, images: rest.images, imageAltTexts: rest.imageAltTexts ?? [] },
           });
 
       const keepIds = variants.map((variant) => variant.id).filter(Boolean) as string[];
@@ -139,14 +184,21 @@ export const adminRouter = router({
       await ctx.db.productDraft.deleteMany({ where: { userId: ctx.user.id } });
     }
     await enqueue("index-product", { productId: product.id });
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: id ? "product.updated" : "product.created",
+      entityType: "Product",
+      entityId: product.id,
+      ipAddress: ctx.ip,
+    });
     return product;
   }),
 
-  productDraft: adminProcedure.query(async ({ ctx }) => {
+  productDraft: catalogProcedure.query(async ({ ctx }) => {
     return ctx.db.productDraft.findUnique({ where: { userId: ctx.user.id } });
   }),
 
-  saveProductDraft: adminProcedure
+  saveProductDraft: catalogProcedure
     .input(z.object({ data: z.record(z.string(), z.unknown()) }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.productDraft.upsert({
@@ -159,42 +211,67 @@ export const adminRouter = router({
       });
     }),
 
-  clearProductDraft: adminProcedure.mutation(async ({ ctx }) => {
+  clearProductDraft: catalogProcedure.mutation(async ({ ctx }) => {
     await ctx.db.productDraft.deleteMany({ where: { userId: ctx.user.id } });
     return { ok: true };
   }),
 
-  inventory: adminProcedure.query(async ({ ctx }) => {
+  inventory: catalogProcedure.query(async ({ ctx }) => {
     const variants = await ctx.db.productVariant.findMany({
       include: { product: true },
       orderBy: { stockQty: "asc" },
     });
     return variants.map((variant) => ({
       ...variant,
-      low: variant.stockQty <= env.LOW_STOCK_THRESHOLD,
+      availableQty: Math.max(0, variant.stockQty - variant.reservedQty),
+      low: isLowStock(variant.stockQty, variant.reservedQty),
     }));
   }),
 
-  adjustStock: adminProcedure.input(stockAdjustSchema).mutation(async ({ ctx, input }) => {
-    return ctx.db.productVariant.update({
-      where: { id: input.variantId },
-      data: { stockQty: input.stockQty },
-    });
+  inventoryMovements: catalogProcedure
+    .input(z.object({ variantId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.db.inventoryMovement.findMany({
+        where: input?.variantId ? { variantId: input.variantId } : undefined,
+        include: { variant: { include: { product: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+    }),
+
+  adjustStock: catalogProcedure.input(stockAdjustSchema).mutation(async ({ ctx, input }) => {
+    return ctx.db.$transaction((tx) =>
+      setStockAbsolute(tx, input.variantId, input.stockQty, input.reason ?? "Manual adjustment", ctx.user.id),
+    );
   }),
 
-  orders: adminProcedure.query(async ({ ctx }) => {
+  importDigitalCodes: catalogProcedure.input(digitalCodeImportSchema).mutation(async ({ ctx, input }) => {
+    const count = await ctx.db.$transaction((tx) => importDigitalCodes(tx, input.variantId, input.codes));
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: "digital-codes.imported",
+      entityType: "ProductVariant",
+      entityId: input.variantId,
+      metadata: { count },
+      ipAddress: ctx.ip,
+    });
+    return { count };
+  }),
+
+  orders: orderStaffProcedure.query(async ({ ctx }) => {
     const orders = await ctx.db.order.findMany({
       include: { user: true, items: true, address: true },
       orderBy: [{ slipUncertain: "desc" }, { createdAt: "desc" }],
     });
     return orders.map((order) => {
-      const { digitalDeliveryEncrypted, ...safeOrder } = order;
+      const { digitalDeliveryEncrypted, guestAccessTokenHash, ...safeOrder } = order;
       void digitalDeliveryEncrypted;
+      void guestAccessTokenHash;
       return safeOrder;
     });
   }),
 
-  orderById: adminProcedure
+  orderById: orderStaffProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const order = await ctx.db.order.findUnique({
@@ -204,17 +281,20 @@ export const adminRouter = router({
           items: true,
           address: true,
           statusEvents: { orderBy: { createdAt: "asc" } },
+          payments: true,
+          refunds: true,
         },
       });
       if (!order) return null;
-      const { digitalDeliveryEncrypted, ...safeOrder } = order;
+      const { digitalDeliveryEncrypted, guestAccessTokenHash, ...safeOrder } = order;
+      void guestAccessTokenHash;
       return {
         ...safeOrder,
         digitalDelivery: decryptDigitalDelivery(digitalDeliveryEncrypted),
       };
     }),
 
-  decidePayment: adminProcedure
+  decidePayment: orderStaffProcedure
     .input(z.object({ orderId: z.string(), approve: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const order = await ctx.db.order.findUnique({ where: { id: input.orderId } });
@@ -222,23 +302,12 @@ export const adminRouter = router({
       if (order.status !== "PENDING") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This order is not pending payment." });
       }
-      if (input.approve) return fulfillPaidOrder(order.id);
-      return ctx.db.order.update({
-        where: { id: order.id },
-        data: {
-          status: "CANCELLED",
-          slipUncertain: false,
-          statusEvents: {
-            create: {
-              status: "CANCELLED",
-              note: "Payment rejected by an administrator.",
-            },
-          },
-        },
-      });
+      if (input.approve) return fulfillPaidOrder(order.id, ctx.user.id);
+      const { cancelPendingOrder } = await import("@/server/services/fulfillment");
+      return cancelPendingOrder(order.id, "Payment rejected by an administrator.", ctx.user.id);
     }),
 
-  fulfill: adminProcedure.input(fulfillSchema).mutation(async ({ ctx, input }) => {
+  fulfill: orderStaffProcedure.input(fulfillSchema).mutation(async ({ ctx, input }) => {
     const order = await ctx.db.order.findUnique({ where: { id: input.orderId } });
     if (!order) throw new TRPCError({ code: "NOT_FOUND" });
     if (order.fulfillmentType === "DIGITAL") {
@@ -279,7 +348,7 @@ export const adminRouter = router({
     return updated;
   }),
 
-  deliverDigital: adminProcedure
+  deliverDigital: orderStaffProcedure
     .input(digitalDeliverySchema)
     .mutation(async ({ ctx, input }) => {
       const order = await ctx.db.order.findUnique({
@@ -287,13 +356,13 @@ export const adminRouter = router({
         include: { user: true },
       });
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
-      if (order.fulfillmentType !== "DIGITAL") {
+      if (order.fulfillmentType === "PHYSICAL") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This is not a digital order.",
         });
       }
-      if (!["PAID", "DELIVERED"].includes(order.status)) {
+      if (!["PAID", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Payment must be confirmed before digital delivery.",
@@ -301,51 +370,98 @@ export const adminRouter = router({
       }
 
       const deliveredAt = new Date();
+      const nextStatus = order.fulfillmentType === "DIGITAL" ? "DELIVERED" : order.status;
       const updated = await ctx.db.order.update({
         where: { id: order.id },
         data: {
-          status: "DELIVERED",
+          status: nextStatus,
           digitalDeliveryEncrypted: encryptDigitalDelivery(input.content),
           digitalDeliveredAt: deliveredAt,
-          statusEvents: {
-            create: {
-              status: "DELIVERED",
-              note:
-                order.status === "DELIVERED"
-                  ? "Digital access details updated by an administrator."
-                  : "Digital access details delivered to the customer.",
-            },
-          },
+          ...(nextStatus === "DELIVERED"
+            ? {
+                statusEvents: {
+                  create: {
+                    status: "DELIVERED" as const,
+                    note:
+                      order.status === "DELIVERED"
+                        ? "Digital access details updated by an administrator."
+                        : "Digital access details delivered to the customer.",
+                  },
+                },
+              }
+            : {}),
         },
       });
+      const email = order.user?.email ?? order.guestEmail;
       await notify({
         event: "order.digital-delivered",
         subject: `Your digital order is ready · ${order.promptpayRef}`,
-        text: `Sign in and open order ${order.promptpayRef} to view your digital access details.`,
-        data: { email: order.user.email, orderId: order.id },
+        text: `Open order ${order.promptpayRef} to view your digital access details.`,
+        data: { email, orderId: order.id },
       });
       return updated;
     }),
 
-  shippingZones: adminProcedure.query(async ({ ctx }) => {
+  refund: financeProcedure.input(refundSchema).mutation(async ({ ctx, input }) => {
+    try {
+      return await completeRefund({ ...input, actorId: ctx.user.id });
+    } catch (error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error instanceof Error ? error.message : "Refund failed.",
+      });
+    }
+  }),
+
+  shippingZones: orderStaffProcedure.query(async ({ ctx }) => {
     return ctx.db.shippingZone.findMany({ orderBy: { sortOrder: "asc" } });
   }),
 
-  upsertShippingZone: adminProcedure.input(shippingZoneSchema).mutation(async ({ ctx, input }) => {
+  upsertShippingZone: orderStaffProcedure.input(shippingZoneSchema).mutation(async ({ ctx, input }) => {
     const { id, ...data } = input;
     if (id) return ctx.db.shippingZone.update({ where: { id }, data });
     return ctx.db.shippingZone.create({ data });
   }),
 
-  deleteShippingZone: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+  deleteShippingZone: orderStaffProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
     await ctx.db.shippingZone.delete({ where: { id: input.id } });
     return { ok: true };
   }),
 
-  paymentSettings: adminProcedure.query(async () => getPaymentConfig()),
+  paymentSettings: financeProcedure.query(async () => getPaymentConfig()),
 
-  savePaymentSettings: adminProcedure.input(paymentSettingsSchema).mutation(async ({ input }) => {
-    return savePaymentConfig(input);
+  savePaymentSettings: financeProcedure.input(paymentSettingsSchema).mutation(async ({ ctx, input }) => {
+    const saved = await savePaymentConfig(input);
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: "settings.payment",
+      entityType: "StoreSetting",
+      ipAddress: ctx.ip,
+    });
+    return saved;
+  }),
+
+  taxSettings: financeProcedure.query(async () => getTaxConfig()),
+
+  saveTaxSettings: financeProcedure.input(taxSettingsSchema).mutation(async ({ ctx, input }) => {
+    const saved = await saveTaxConfig(input);
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: "settings.tax",
+      entityType: "StoreSetting",
+      ipAddress: ctx.ip,
+    });
+    return saved;
+  }),
+
+  promotions: financeProcedure.query(async ({ ctx }) => {
+    return ctx.db.promotion.findMany({ orderBy: { createdAt: "desc" } });
+  }),
+
+  upsertPromotion: financeProcedure.input(promotionSchema).mutation(async ({ ctx, input }) => {
+    const { id, ...data } = input;
+    if (id) return ctx.db.promotion.update({ where: { id }, data });
+    return ctx.db.promotion.create({ data });
   }),
 
   storefrontSettings: adminProcedure.query(async () => getStorefrontConfig()),
@@ -356,5 +472,60 @@ export const adminRouter = router({
       const saved = await saveStorefrontConfig(input);
       revalidatePath("/", "layout");
       return saved;
+    }),
+
+  reviews: catalogProcedure.query(async ({ ctx }) => {
+    return ctx.db.review.findMany({
+      include: { product: true, user: { select: { email: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+  }),
+
+  moderateReview: catalogProcedure.input(reviewModerationSchema).mutation(async ({ ctx, input }) => {
+    return ctx.db.review.update({
+      where: { id: input.reviewId },
+      data: { status: input.status, adminNote: input.adminNote },
+    });
+  }),
+
+  notifications: staffProcedure.query(async ({ ctx }) => {
+    return ctx.db.notificationLog.findMany({
+      orderBy: { id: "desc" },
+      take: 100,
+    });
+  }),
+
+  retryNotifications: staffProcedure.mutation(async () => {
+    const count = await retryFailedNotifications();
+    return { count };
+  }),
+
+  auditLogs: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.auditLog.findMany({
+      include: { actor: { select: { email: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }),
+
+  staff: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findMany({
+      where: { role: { not: "BUYER" } },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+  }),
+
+  setStaffRole: adminProcedure
+    .input(z.object({ userId: z.string(), role: z.enum(["BUYER", "ADMIN", "CATALOG_MANAGER", "ORDER_MANAGER", "FINANCE"]) }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.user.id && input.role !== "ADMIN") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot remove your own admin role." });
+      }
+      return ctx.db.user.update({
+        where: { id: input.userId },
+        data: { role: input.role },
+        select: { id: true, email: true, role: true },
+      });
     }),
 });

@@ -3,12 +3,35 @@ import { z } from "zod";
 export const registerSchema = z.object({
   name: z.string().min(2).max(80),
   email: z.string().email(),
-  password: z.string().min(8).max(72),
+  password: z
+    .string()
+    .min(10)
+    .max(72)
+    .regex(/[a-z]/, "Add a lowercase letter")
+    .regex(/[A-Z]/, "Add an uppercase letter")
+    .regex(/[0-9]/, "Add a number"),
 });
 
 export const signInSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(32).max(256),
+  password: registerSchema.shape.password,
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(32).max(256),
+});
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2).max(80),
 });
 
 export const catalogQuerySchema = z.object({
@@ -18,6 +41,8 @@ export const catalogQuerySchema = z.object({
   minPrice: z.number().int().optional(),
   maxPrice: z.number().int().optional(),
   sort: z.enum(["newest", "price-asc", "price-desc"]).optional().default("newest"),
+  page: z.number().int().min(1).max(10_000).optional().default(1),
+  pageSize: z.number().int().min(1).max(60).optional().default(24),
 });
 
 export const addressSchema = z.object({
@@ -40,10 +65,29 @@ export const cartItemSchema = z.object({
 export const checkoutSchema = z.object({
   addressId: z.string().min(1).optional(),
   shippingZoneId: z.string().min(1).optional(),
+  promotionCode: z.string().trim().min(2).max(64).optional(),
+  idempotencyKey: z.string().min(16).max(191).optional(),
+  guest: z
+    .object({
+      email: z.string().trim().toLowerCase().email(),
+      name: z.string().trim().min(2).max(80),
+      phone: z.string().trim().min(8).max(20).optional(),
+    })
+    .optional(),
+  shippingAddress: addressSchema.omit({ isDefault: true }).optional(),
+  billingDetails: z
+    .object({
+      name: z.string().trim().min(2).max(120),
+      taxId: z.string().trim().min(10).max(20),
+      address: z.string().trim().min(8).max(500),
+      branch: z.string().trim().max(80).optional(),
+    })
+    .optional(),
 });
 
 export const orderIdSchema = z.object({
   orderId: z.string().min(1),
+  guestToken: z.string().min(16).max(256).optional(),
 });
 
 export const variantInputSchema = z.object({
@@ -69,8 +113,28 @@ export const productFormSchema = z.object({
   basePriceCents: z.number().int().positive(),
   currency: z.string(),
   images: z.array(z.string().min(1)).min(1),
+  imageAltTexts: z.array(z.string().trim().max(160)).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
+  fulfillmentType: z.enum(["PHYSICAL", "DIGITAL"]).default("PHYSICAL"),
+  seoTitle: z.string().trim().max(160).optional().or(z.literal("")),
+  seoDescription: z.string().trim().max(320).optional().or(z.literal("")),
   variants: z.array(variantInputSchema).min(1),
+});
+
+export const categorySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(2).max(100),
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and dashes"),
+  parentId: z.string().nullable().optional(),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  seoTitle: z.string().trim().max(160).optional().or(z.literal("")),
+  seoDescription: z.string().trim().max(320).optional().or(z.literal("")),
+  sortOrder: z.number().int().min(0).max(100_000).default(0),
 });
 
 export const shippingZoneSchema = z.object({
@@ -86,6 +150,7 @@ export const shippingZoneSchema = z.object({
 export const stockAdjustSchema = z.object({
   variantId: z.string().min(1),
   stockQty: z.number().int().min(0),
+  reason: z.string().trim().min(3).max(191).optional(),
 });
 
 export const fulfillSchema = z.object({
@@ -158,4 +223,74 @@ export const storefrontSettingsSchema = z.object({
 export const digitalDeliverySchema = z.object({
   orderId: z.string().min(1),
   content: z.string().trim().min(4).max(10000),
+});
+
+export const digitalCodeImportSchema = z.object({
+  variantId: z.string().min(1),
+  codes: z.array(z.string().trim().min(2).max(10_000)).min(1).max(500),
+});
+
+export const promotionSchema = z
+  .object({
+    id: z.string().optional(),
+    code: z.string().trim().toUpperCase().min(2).max(64),
+    name: z.string().trim().min(2).max(120),
+    description: z.string().trim().max(1000).optional().or(z.literal("")),
+    type: z.enum(["PERCENTAGE", "FIXED"]),
+    value: z.number().int().positive(),
+    minSubtotalCents: z.number().int().min(0).default(0),
+    maxDiscountCents: z.number().int().positive().nullable().optional(),
+    usageLimit: z.number().int().positive().nullable().optional(),
+    active: z.boolean().default(true),
+    startsAt: z.date().nullable().optional(),
+    endsAt: z.date().nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.type === "PERCENTAGE" && value.value > 10_000) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["value"],
+        message: "Percentage value cannot exceed 10000 basis points",
+      });
+    }
+    if (value.startsAt && value.endsAt && value.endsAt <= value.startsAt) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "End date must be after start date",
+      });
+    }
+  });
+
+export const reviewSchema = z.object({
+  productId: z.string().min(1),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().min(10).max(3000),
+});
+
+export const reviewModerationSchema = z.object({
+  reviewId: z.string().min(1),
+  status: z.enum(["PUBLISHED", "REJECTED"]),
+  adminNote: z.string().trim().max(1000).optional(),
+});
+
+export const refundSchema = z.object({
+  orderId: z.string().min(1),
+  amountCents: z.number().int().positive(),
+  reason: z.string().trim().min(5).max(2000),
+  restock: z.boolean().default(true),
+});
+
+export const customerCancellationSchema = z.object({
+  orderId: z.string().min(1),
+  reason: z.string().trim().min(3).max(500),
+});
+
+export const taxSettingsSchema = z.object({
+  enabled: z.boolean(),
+  rateBps: z.number().int().min(0).max(10_000),
+  inclusive: z.boolean(),
+  businessName: z.string().trim().min(2).max(160),
+  taxId: z.string().trim().max(32),
+  address: z.string().trim().max(500),
 });

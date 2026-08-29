@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { nanoid } from "nanoid";
 import { env, hasR2 } from "@/lib/env";
+import { assertImageBuffer } from "@/lib/image-magic";
 
 function client() {
   return new S3Client({
@@ -24,10 +25,12 @@ export async function uploadProductImage(
   originalName: string,
   body: Buffer,
   contentType: string,
-  area: "products" | "marketing" = "products",
+  area: "products" | "marketing" | "slips" = "products",
 ) {
+  const mime = assertImageBuffer(body, contentType);
   const filename = `${nanoid()}.${safeExt(originalName)}`;
   const key = `${area}/${filename}`;
+  const storedType = mime;
 
   if (!hasR2()) {
     const dir = join(process.cwd(), "public", "uploads", area);
@@ -41,7 +44,7 @@ export async function uploadProductImage(
       Bucket: env.R2_BUCKET,
       Key: key,
       Body: body,
-      ContentType: contentType || "image/jpeg",
+      ContentType: storedType,
     })
   );
 

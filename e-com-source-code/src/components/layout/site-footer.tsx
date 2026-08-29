@@ -29,6 +29,18 @@ export function SiteFooter({
             <Link href="/catalog" className="hover:text-foreground">
               Shop
             </Link>
+            <Link href="/legal/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/legal/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/legal/returns" className="hover:text-foreground">
+              Returns
+            </Link>
+            <Link href="/legal/contact" className="hover:text-foreground">
+              Contact
+            </Link>
           </div>
         </div>
       </div>

@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useForm } from "react-hook-form";
+import { nanoid } from "nanoid";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,27 +25,18 @@ type AddressForm = z.infer<typeof addressSchema>;
 export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
   const router = useRouter();
   const { status } = useSession();
-  const physical = storeMode === "physical";
+  const signedIn = status === "authenticated";
   const [addressId, setAddressId] = useState<string | null>(null);
-  const cart = trpc.cart.get.useQuery(undefined, { enabled: status === "authenticated" });
-  const addresses = trpc.address.list.useQuery(undefined, {
-    enabled: status === "authenticated" && physical,
-  });
-  const quote = trpc.order.quoteShipping.useQuery(
-    { addressId: addressId ?? "" },
-    { enabled: physical && Boolean(addressId) }
-  );
-  const createAddress = trpc.address.create.useMutation({
-    onSuccess: (address) => {
-      setAddressId(address.id);
-      addresses.refetch();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-  const place = trpc.order.createFromCart.useMutation({
-    onSuccess: (order) => router.push(`/checkout/${order.id}`),
-    onError: (error) => toast.error(error.message),
-  });
+  const [promo, setPromo] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const idempotencyKey = useMemo(() => `ck_${nanoid(20)}`, []);
+  const cart = trpc.cart.get.useQuery();
+  const needsShipping =
+    storeMode !== "digital" &&
+    (cart.data?.lines.length
+      ? cart.data.lines.some((line) => line.fulfillmentType !== "DIGITAL")
+      : true);
   const form = useForm<AddressForm>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
@@ -59,11 +51,33 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
       isDefault: true,
     },
   });
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin?callbackUrl=/checkout");
-    return null;
-  }
+  const guestProvince = useWatch({ control: form.control, name: "province" });
+  const addresses = trpc.address.list.useQuery(undefined, {
+    enabled: signedIn && needsShipping,
+  });
+  const quote = trpc.order.quoteShipping.useQuery(
+    signedIn ? { addressId: addressId ?? undefined } : { province: guestProvince },
+    { enabled: needsShipping && (signedIn ? Boolean(addressId) : Boolean(guestProvince)) },
+  );
+  const totals = trpc.order.previewTotals.useQuery({
+    promotionCode: promo || undefined,
+    addressId: addressId ?? undefined,
+    province: signedIn ? undefined : guestProvince,
+  });
+  const createAddress = trpc.address.create.useMutation({
+    onSuccess: (address) => {
+      setAddressId(address.id);
+      addresses.refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const place = trpc.order.createFromCart.useMutation({
+    onSuccess: (order) => {
+      const token = order.guestAccessToken;
+      router.push(`/checkout/${order.id}${token ? `?g=${token}` : ""}`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const outOfStock = cart.data?.lines.some((line) => line.stockQty < line.quantity || line.stockQty < 1) ?? false;
 
@@ -87,6 +101,7 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
                   {line.product.title}
                   <span className="block text-muted-foreground">
                     {line.attributeLabel} × {line.quantity}
+                    {line.fulfillmentType === "DIGITAL" ? " · Digital" : ""}
                     {line.stockQty < 1 ? " · Out of stock" : ""}
                   </span>
                 </span>
@@ -97,6 +112,18 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
               <span>Subtotal</span>
               <span className="font-tabular">{formatMoney(cart.data.subtotalCents)}</span>
             </div>
+            {totals.data?.discountCents ? (
+              <div className="flex justify-between text-sm text-primary">
+                <span>Discount</span>
+                <span className="font-tabular">-{formatMoney(totals.data.discountCents)}</span>
+              </div>
+            ) : null}
+            {totals.data?.taxCents ? (
+              <div className="flex justify-between text-sm">
+                <span>VAT</span>
+                <span className="font-tabular">{formatMoney(totals.data.taxCents)}</span>
+              </div>
+            ) : null}
             <Link href="/cart" className="text-sm text-primary">
               Edit cart
             </Link>
@@ -104,80 +131,105 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
         )}
       </section>
 
-      {physical ? (
+      {!signedIn ? (
         <>
-      <SectionDivider />
-      <section className="space-y-4">
-        <h2 className="font-display text-xl">2. Shipping address</h2>
-        <div className="space-y-2">
-          {addresses.data?.map((address) => (
-            <label
-              key={address.id}
-              className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${addressId === address.id ? "border-primary" : "border-border"}`}
-            >
-              <input type="radio" name="address" checked={addressId === address.id} onChange={() => setAddressId(address.id)} />
-              <span className="text-sm leading-6">
-                <strong>{address.recipientName}</strong>
-                <br />
-                {address.addressLine1}, {address.subdistrict}, {address.district}, {address.province} {address.postalCode}
-              </span>
-            </label>
-          ))}
-        </div>
-        <form
-          className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
-          onSubmit={form.handleSubmit((values) => createAddress.mutate(values))}
-        >
-          <p className="eyebrow sm:col-span-2">New address</p>
-          <Field label="Recipient">
-            <Input {...form.register("recipientName")} />
-          </Field>
-          <Field label="Phone">
-            <Input {...form.register("phone")} />
-          </Field>
-          <Field label="Address" className="sm:col-span-2">
-            <Input {...form.register("addressLine1")} />
-          </Field>
-          <Field label="Subdistrict">
-            <Input {...form.register("subdistrict")} />
-          </Field>
-          <Field label="District">
-            <Input {...form.register("district")} />
-          </Field>
-          <Field label="Province">
-            <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm" {...form.register("province")}>
-              {THAI_PROVINCES.map((province) => (
-                <option key={province} value={province}>
-                  {province}
-                </option>
+          <SectionDivider />
+          <section className="space-y-3">
+            <h2 className="font-display text-xl">Guest details</h2>
+            <p className="text-sm text-muted-foreground">
+              Checkout without an account, or{" "}
+              <Link href="/auth/signin?callbackUrl=/checkout" className="text-primary">
+                sign in
+              </Link>
+              .
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Name">
+                <Input value={guestName} onChange={(event) => setGuestName(event.target.value)} />
+              </Field>
+              <Field label="Email">
+                <Input type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} />
+              </Field>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {needsShipping ? (
+        <>
+          <SectionDivider />
+          <section className="space-y-4">
+            <h2 className="font-display text-xl">2. Shipping address</h2>
+            <div className="space-y-2">
+              {addresses.data?.map((address) => (
+                <label
+                  key={address.id}
+                  className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${addressId === address.id ? "border-primary" : "border-border"}`}
+                >
+                  <input type="radio" name="address" checked={addressId === address.id} onChange={() => setAddressId(address.id)} />
+                  <span className="text-sm leading-6">
+                    <strong>{address.recipientName}</strong>
+                    <br />
+                    {address.addressLine1}, {address.subdistrict}, {address.district}, {address.province} {address.postalCode}
+                  </span>
+                </label>
               ))}
-            </select>
-          </Field>
-          <Field label="Postal code">
-            <Input {...form.register("postalCode")} />
-          </Field>
-          <div className="sm:col-span-2">
-            <Button type="submit" variant="outline" disabled={createAddress.isPending}>
-              Save address
-            </Button>
-          </div>
-        </form>
-      </section>
+            </div>
+            <form
+              className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
+              onSubmit={form.handleSubmit((values) => signedIn && createAddress.mutate(values))}
+            >
+              <p className="eyebrow sm:col-span-2">{signedIn ? "New address" : "Delivery address"}</p>
+              <Field label="Recipient">
+                <Input {...form.register("recipientName")} />
+              </Field>
+              <Field label="Phone">
+                <Input {...form.register("phone")} />
+              </Field>
+              <Field label="Address" className="sm:col-span-2">
+                <Input {...form.register("addressLine1")} />
+              </Field>
+              <Field label="Subdistrict">
+                <Input {...form.register("subdistrict")} />
+              </Field>
+              <Field label="District">
+                <Input {...form.register("district")} />
+              </Field>
+              <Field label="Province">
+                <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm" {...form.register("province")}>
+                  {THAI_PROVINCES.map((province) => (
+                    <option key={province} value={province}>
+                      {province}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Postal code">
+                <Input {...form.register("postalCode")} />
+              </Field>
+              {signedIn ? (
+                <div className="sm:col-span-2">
+                  <Button type="submit" variant="outline" disabled={createAddress.isPending}>
+                    Save address
+                  </Button>
+                </div>
+              ) : null}
+            </form>
+          </section>
 
-      <SectionDivider />
-
-      <section className="space-y-3">
-        <h2 className="font-display text-xl">3. Shipping method</h2>
-        {quote.data ? (
-          <div className="rounded-xl border border-primary bg-card p-4 text-sm">
-            <p>{quote.data.zone.name}</p>
-            <p className="font-tabular mt-1 text-brass">{formatMoney(quote.data.feeCents)}</p>
-            <p className="mt-1 text-muted-foreground">Estimated delivery {quote.data.estimatedDelivery}</p>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Select an address to see the shipping fee.</p>
-        )}
-      </section>
+          <SectionDivider />
+          <section className="space-y-3">
+            <h2 className="font-display text-xl">3. Shipping method</h2>
+            {quote.data ? (
+              <div className="rounded-xl border border-primary bg-card p-4 text-sm">
+                <p>{quote.data.zone.name}</p>
+                <p className="font-tabular mt-1 text-brass">{formatMoney(quote.data.feeCents)}</p>
+                <p className="mt-1 text-muted-foreground">Estimated delivery {quote.data.estimatedDelivery}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Select an address to see the shipping fee.</p>
+            )}
+          </section>
         </>
       ) : (
         <>
@@ -186,38 +238,49 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
             <p className="eyebrow">Digital delivery</p>
             <h2 className="font-display mt-2 text-xl">No shipping address required</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              After payment is verified, the store will add your ID, code, or
-              access instructions securely to this order.
+              After payment is verified, digital access details appear on this order.
             </p>
           </section>
         </>
       )}
 
       <SectionDivider />
-
       <section className="space-y-3">
-        <h2 className="font-display text-xl">{physical ? "4" : "2"}. Payment</h2>
+        <h2 className="font-display text-xl">Promo code</h2>
+        <Input
+          placeholder="Optional code"
+          value={promo}
+          onChange={(event) => setPromo(event.target.value.toUpperCase())}
+        />
+      </section>
+
+      <SectionDivider />
+      <section className="space-y-3">
+        <h2 className="font-display text-xl">{needsShipping ? "4" : "2"}. Payment</h2>
         <p className="text-sm text-muted-foreground">
-          You will receive a PromptPay QR on the next screen.{" "}
-          {physical
-            ? "The order is packed after the transfer is verified."
-            : "Your digital access will be prepared after the transfer is verified."}
+          You will receive a PromptPay QR on the next screen.
         </p>
         {outOfStock ? <p className="text-sm text-destructive">Remove out-of-stock items before paying.</p> : null}
         <Button
           disabled={
-            (physical && (!addressId || !quote.data)) ||
+            (needsShipping && signedIn && (!addressId || !quote.data)) ||
+            (needsShipping && !signedIn && (!quote.data || !form.getValues("recipientName"))) ||
+            (!signedIn && (!guestEmail || !guestName)) ||
             !cart.data?.lines.length ||
             outOfStock ||
             place.isPending
           }
           onClick={() => {
-            if (physical) {
-              if (!addressId || !quote.data) return;
-              place.mutate({ addressId, shippingZoneId: quote.data.zone.id });
-              return;
-            }
-            place.mutate({});
+            const guest = signedIn ? undefined : { email: guestEmail.trim(), name: guestName.trim() };
+            const shippingAddress = !signedIn && needsShipping ? form.getValues() : undefined;
+            place.mutate({
+              addressId: signedIn && needsShipping ? addressId ?? undefined : undefined,
+              shippingZoneId: needsShipping ? quote.data?.zone.id : undefined,
+              promotionCode: promo || undefined,
+              idempotencyKey,
+              guest,
+              shippingAddress,
+            });
           }}
         >
           {place.isPending ? "Placing order" : "Continue to PromptPay"}

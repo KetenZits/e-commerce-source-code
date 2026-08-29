@@ -3,18 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Menu } from "lucide-react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CartButton } from "@/components/cart/cart-button";
+import { MobileMenuVisual } from "@/components/layout/mobile-menu-visual";
 import { NavSearch } from "@/components/layout/nav-search";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import StaggeredMenu from "@/components/reactbits/StaggeredMenu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +19,6 @@ import {
 import { cn } from "@/lib/utils";
 import { SITE_NAME } from "@/lib/constants";
 import type { StoreMode } from "@/lib/storefront-config";
-import { useState } from "react";
 
 const BASE_TABS = [
   { href: "/catalog", label: "Shop" },
@@ -38,27 +31,113 @@ const BASE_TABS = [
 export function SiteHeader({
   siteName = SITE_NAME,
   storeMode = "physical",
+  navImages = [],
 }: {
   siteName?: string;
   storeMode?: StoreMode;
+  navImages?: string[];
 }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const [open, setOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [closeVersion, setCloseVersion] = useState(0);
+  const closeMobileMenu = useCallback(
+    () => setCloseVersion((version) => version + 1),
+    [],
+  );
   const tabs = BASE_TABS.map((tab) =>
     tab.href === "/shipping"
       ? { ...tab, label: storeMode === "digital" ? "Digital delivery" : "Shipping" }
       : tab,
   );
+  const menuItems = tabs.map((tab) => ({
+    label: tab.label,
+    ariaLabel: `Go to ${tab.label}`,
+    link: tab.href,
+  }));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+    <header className="relative z-40 h-16 min-[821px]:sticky min-[821px]:top-0 min-[821px]:border-b min-[821px]:border-border/80 min-[821px]:bg-background/85 min-[821px]:backdrop-blur-xl">
+      <div className="min-[821px]:hidden">
+        <StaggeredMenu
+          position="right"
+          items={menuItems}
+          displaySocials={false}
+          displayItemNumbering
+          logoText={siteName}
+          isFixed
+          colors={["var(--brass)", "var(--primary)"]}
+          accentColor="var(--brass)"
+          menuButtonColor="var(--foreground)"
+          openMenuButtonColor="var(--foreground)"
+          closeSignal={`${pathname}:${closeVersion}`}
+          onMenuOpen={() => setMobileMenuOpen(true)}
+          onMenuClose={() => setMobileMenuOpen(false)}
+          headerActions={<CartButton />}
+          panelVisual={
+            mobileMenuOpen ? (
+              <MobileMenuVisual images={navImages} storeMode={storeMode} />
+            ) : null
+          }
+          panelFooter={
+            <div className="space-y-4">
+              <NavSearch onSubmit={closeMobileMenu} />
+              {status === "loading" ? (
+                <p className="text-xs text-muted-foreground">
+                  Loading account…
+                </p>
+              ) : session?.user ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<Link href="/dashboard/orders" />}
+                    onClick={closeMobileMenu}
+                  >
+                    Orders
+                  </Button>
+                  {session.user.role === "ADMIN" ? (
+                    <Button
+                      variant="outline"
+                      nativeButton={false}
+                      render={<Link href="/admin" />}
+                      onClick={closeMobileMenu}
+                    >
+                      Admin
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    className="col-span-2"
+                    onClick={() => {
+                      closeMobileMenu();
+                      void signOut({ callbackUrl: "/" });
+                    }}
+                  >
+                    Sign out
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  className="w-full"
+                  nativeButton={false}
+                  render={<Link href="/auth/signin" />}
+                  onClick={closeMobileMenu}
+                >
+                  Sign in
+                </Button>
+              )}
+            </div>
+          }
+        />
+      </div>
+
+      <div className="mx-auto hidden h-16 max-w-6xl items-center gap-3 px-4 min-[821px]:flex">
         <Link href="/" className="font-display mr-1 flex items-center gap-2 text-lg tracking-tight">
           <span className="size-1.5 rotate-45 bg-brass" aria-hidden />
           {siteName}
         </Link>
-        <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
+        <nav className="flex min-w-0 flex-1 items-center gap-1">
           {tabs.map((tab) => {
             const active =
               tab.href === "/#featured"
@@ -79,7 +158,7 @@ export function SiteHeader({
             );
           })}
         </nav>
-        <div className="ml-auto hidden items-center gap-2 md:flex">
+        <div className="ml-auto flex items-center gap-2">
           <NavSearch />
         </div>
         <CartButton />
@@ -108,33 +187,6 @@ export function SiteHeader({
             Sign in
           </Button>
         )}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button variant="ghost" size="sm" className="md:hidden" />}>
-            <Menu className="size-4" />
-            <span className="sr-only">Menu</span>
-          </DialogTrigger>
-          <DialogContent className="fixed top-0 right-0 left-auto h-full max-h-none w-72 max-w-none translate-x-0 translate-y-0 rounded-none border-y-0 border-l border-border sm:max-w-none">
-            <DialogHeader>
-              <DialogTitle className="font-display">{siteName}</DialogTitle>
-              <DialogDescription className="sr-only">Store navigation</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <NavSearch onSubmit={() => setOpen(false)} />
-              <nav className="flex flex-col gap-1">
-                {tabs.map((tab) => (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    onClick={() => setOpen(false)}
-                    className="rounded-md px-2 py-2 text-sm hover:bg-muted"
-                  >
-                    {tab.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </header>
   );

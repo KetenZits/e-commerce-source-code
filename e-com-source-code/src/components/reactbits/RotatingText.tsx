@@ -1,3 +1,5 @@
+"use client";
+
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import {
   motion,
@@ -5,8 +7,9 @@ import {
   type Transition,
   type VariantLabels,
   type Target,
-  type TargetAndTransition
-} from 'motion/react';
+  type TargetAndTransition,
+  useReducedMotion,
+} from 'framer-motion';
 
 function cn(...classes: (string | undefined | null | boolean)[]): string {
   return classes.filter(Boolean).join(' ');
@@ -68,6 +71,7 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
     ref
   ) => {
     const [currentTextIndex, setCurrentTextIndex] = useState<number>(0);
+    const reduceMotion = useReducedMotion();
 
     const splitIntoCharacters = (text: string): string[] => {
       if (typeof Intl !== 'undefined' && Intl.Segmenter) {
@@ -78,7 +82,7 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
     };
 
     const elements = useMemo(() => {
-      const currentText: string = texts[currentTextIndex];
+      const currentText = texts[currentTextIndex] ?? '';
       if (splitBy === 'characters') {
         const words = currentText.split(' ');
         return words.map((word, i) => ({
@@ -173,10 +177,10 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
     );
 
     useEffect(() => {
-      if (!auto) return;
+      if (!auto || reduceMotion || texts.length < 2) return;
       const intervalId = setInterval(next, rotationInterval);
       return () => clearInterval(intervalId);
-    }, [next, rotationInterval, auto]);
+    }, [next, rotationInterval, auto, reduceMotion, texts.length]);
 
     return (
       <motion.span
@@ -202,9 +206,9 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
                   {wordObj.characters.map((char, charIndex) => (
                     <motion.span
                       key={charIndex}
-                      initial={initial}
-                      animate={animate}
-                      exit={exit}
+                      initial={reduceMotion ? false : initial}
+                      animate={reduceMotion ? undefined : animate}
+                      exit={reduceMotion ? undefined : exit}
                       transition={{
                         ...transition,
                         delay: getStaggerDelay(

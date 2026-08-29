@@ -4,6 +4,7 @@ import { cartItemSchema } from "@/server/schemas";
 import { publicProcedure, router } from "@/server/trpc";
 import { cartOwnerWhere, ensureCartSession } from "@/server/cart-session";
 import { formatAttributes, productImages } from "@/lib/product";
+import { availableQty } from "@/server/services/inventory";
 
 async function mergeGuestCart(ctx: { db: typeof import("@/lib/db").db; session: { user?: { id: string } } | null; cartSessionId: string | null }) {
   const userId = ctx.session?.user?.id;
@@ -42,8 +43,10 @@ async function loadCart(ctx: { db: typeof import("@/lib/db").db; userId: string 
     attributes: item.variant.attributes,
     attributeLabel: formatAttributes(item.variant.attributes),
     priceCents: item.variant.priceCents,
-    stockQty: item.variant.stockQty,
+    stockQty: availableQty(item.variant.stockQty, item.variant.reservedQty),
+    reservedQty: item.variant.reservedQty,
     weightGrams: item.variant.weightGrams,
+    fulfillmentType: item.variant.product.fulfillmentType,
     product: {
       id: item.variant.product.id,
       slug: item.variant.product.slug,
@@ -73,7 +76,7 @@ export const cartRouter = router({
     if (!variant || variant.product.status !== "PUBLISHED") {
       throw new TRPCError({ code: "NOT_FOUND", message: "This item is not available." });
     }
-    if (variant.stockQty < 1) {
+    if (availableQty(variant.stockQty, variant.reservedQty) < 1) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Out of stock." });
     }
     const owner = await ensureCartSession(ctx);
@@ -81,7 +84,7 @@ export const cartRouter = router({
       where: { ...cartOwnerWhere(owner.userId, owner.sessionId), productVariantId: variant.id },
     });
     const nextQty = (existing?.quantity ?? 0) + input.quantity;
-    if (nextQty > variant.stockQty) {
+    if (nextQty > availableQty(variant.stockQty, variant.reservedQty)) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Not enough stock for that quantity." });
     }
     if (existing) {
@@ -111,7 +114,7 @@ export const cartRouter = router({
       if (input.quantity === 0) {
         await ctx.db.cartItem.delete({ where: { id: item.id } });
       } else {
-        if (input.quantity > item.variant.stockQty) {
+        if (input.quantity > availableQty(item.variant.stockQty, item.variant.reservedQty)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Not enough stock for that quantity." });
         }
         await ctx.db.cartItem.update({ where: { id: item.id }, data: { quantity: input.quantity } });

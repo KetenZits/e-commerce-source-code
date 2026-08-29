@@ -11,6 +11,9 @@ datasource db {
 enum Role {
   BUYER
   ADMIN
+  CATALOG_MANAGER
+  ORDER_MANAGER
+  FINANCE
 }
 
 enum ProductStatus {
@@ -32,12 +35,54 @@ enum OrderStatus {
 enum FulfillmentType {
   PHYSICAL
   DIGITAL
+  MIXED
 }
 
 enum NotificationStatus {
   QUEUED
   SENT
   FAILED
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REFUNDED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum InventoryMovementType {
+  RESERVATION
+  RESERVATION_RELEASE
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  REFUND
+}
+
+enum DigitalCodeStatus {
+  AVAILABLE
+  RESERVED
+  DELIVERED
+  REVOKED
 }
 
 model User {
@@ -59,6 +104,8 @@ model User {
   cartItems CartItem[]
   wishlistItems WishlistItem[]
   productDraft ProductDraft?
+  authTokens AuthToken[]
+  auditLogs AuditLog[] @relation("AuditActor")
 }
 
 model Account {
@@ -101,12 +148,17 @@ model Category {
   name     String
   slug     String  @unique @db.VarChar(191)
   parentId String?
+  description String? @db.Text
+  seoTitle String?
+  seoDescription String? @db.Text
+  sortOrder Int @default(0)
 
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryTree")
   products Product[]
 
   @@index([parentId])
+  @@index([sortOrder, name])
 }
 
 model Product {
@@ -119,7 +171,11 @@ model Product {
   categoryId     String
   brand          String
   images         Json
+  imageAltTexts  Json?
   status         ProductStatus @default(DRAFT)
+  fulfillmentType FulfillmentType @default(PHYSICAL)
+  seoTitle       String?
+  seoDescription String?       @db.Text
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -140,12 +196,15 @@ model ProductVariant {
   attributes Json
   priceCents Int
   stockQty   Int     @default(0)
+  reservedQty Int   @default(0)
   weightGrams Int    @default(0)
   imageUrl   String? @db.Text
 
   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems CartItem[]
   orderItems OrderItem[]
+  inventoryMovements InventoryMovement[]
+  digitalCodes DigitalCode[]
 
   @@index([productId])
   @@index([stockQty])
@@ -199,14 +258,24 @@ model ShippingZone {
 
 model Order {
   id              String      @id @default(cuid())
-  userId          String
+  userId          String?
   addressId       String?
   status          OrderStatus @default(PENDING)
   fulfillmentType FulfillmentType @default(PHYSICAL)
   subtotalCents   Int
+  discountCents   Int         @default(0)
+  taxCents        Int         @default(0)
+  taxRateBps      Int         @default(0)
+  billingDetails  Json?
   shippingFeeCents Int
   totalCents      Int
   currency        String      @default("THB") @db.VarChar(8)
+  promotionCode   String?     @db.VarChar(64)
+  guestEmail      String?     @db.VarChar(191)
+  guestName       String?
+  guestPhone      String?
+  guestAccessTokenHash String? @unique @db.VarChar(191)
+  idempotencyKey  String?     @unique @db.VarChar(191)
   promptpayRef    String      @unique @db.VarChar(191)
   slipImageUrl    String?     @db.Text
   slipUncertain   Boolean     @default(false)
@@ -218,13 +287,19 @@ model Order {
   estimatedDelivery String?
   digitalDeliveryEncrypted String? @db.Text
   digitalDeliveredAt DateTime?
+  invoiceNumber   String?     @unique @db.VarChar(64)
+  cancelledAt     DateTime?
+  refundedAt      DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   address Address?   @relation(fields: [addressId], references: [id], onDelete: SetNull)
   items   OrderItem[]
   statusEvents OrderStatusEvent[]
+  payments PaymentTransaction[]
+  refunds Refund[]
+  inventoryMovements InventoryMovement[]
 
   @@index([status, createdAt])
   @@index([userId])
@@ -236,11 +311,15 @@ model OrderItem {
   productVariantId          String
   quantity                  Int
   unitPriceCents            Int
+  discountCents             Int    @default(0)
+  taxCents                  Int    @default(0)
+  fulfillmentTypeSnapshot   FulfillmentType @default(PHYSICAL)
   productTitleSnapshot      String
   variantAttributesSnapshot Json
 
   order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   variant ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+  digitalCodes DigitalCode[]
 
   @@index([orderId])
 }
@@ -252,7 +331,11 @@ model NotificationLog {
   payload Json
   status  NotificationStatus @default(QUEUED)
   error   String?            @db.Text
+  attemptCount Int           @default(0)
+  nextAttemptAt DateTime?
   sentAt  DateTime?
+
+  @@index([status, nextAttemptAt])
 }
 
 model Review {
@@ -261,12 +344,17 @@ model Review {
   userId    String
   rating    Int
   comment   String   @db.Text
+  status    ReviewStatus @default(PENDING)
+  verifiedPurchase Boolean @default(false)
+  adminNote String? @db.Text
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
+  @@index([productId, status, createdAt])
 }
 
 model StoreSetting {
@@ -306,4 +394,128 @@ model ProductDraft {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuthToken {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String    @db.VarChar(32)
+  tokenHash  String    @unique @db.VarChar(191)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+}
+
+model Promotion {
+  id               String       @id @default(cuid())
+  code             String       @unique @db.VarChar(64)
+  name             String
+  description      String?      @db.Text
+  type             DiscountType
+  value            Int
+  minSubtotalCents Int          @default(0)
+  maxDiscountCents Int?
+  usageLimit       Int?
+  usageCount       Int          @default(0)
+  active           Boolean      @default(true)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([active, startsAt, endsAt])
+}
+
+model PaymentTransaction {
+  id              String        @id @default(cuid())
+  orderId         String
+  provider        String        @db.VarChar(32)
+  status          PaymentStatus @default(PENDING)
+  amountCents     Int
+  currency        String        @default("THB") @db.VarChar(8)
+  externalRef     String?       @unique @db.VarChar(191)
+  slipFingerprint String?       @unique @db.VarChar(191)
+  raw             Json?
+  verifiedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status])
+}
+
+model Refund {
+  id          String       @id @default(cuid())
+  orderId     String
+  amountCents Int
+  reason      String       @db.Text
+  status      RefundStatus @default(REQUESTED)
+  requestedBy String?
+  decidedBy   String?
+  decidedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status])
+}
+
+model InventoryMovement {
+  id        String                @id @default(cuid())
+  variantId String
+  orderId   String?
+  type      InventoryMovementType
+  quantity  Int
+  note      String?
+  actorId   String?
+  createdAt DateTime              @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([variantId, createdAt])
+  @@index([orderId])
+}
+
+model DigitalCode {
+  id               String            @id @default(cuid())
+  variantId        String
+  orderItemId      String?
+  encryptedContent String            @db.Text
+  status           DigitalCodeStatus @default(AVAILABLE)
+  reservedAt       DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  orderItem OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+
+  @@index([variantId, status])
+  @@index([orderItemId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String   @db.VarChar(96)
+  entityType String   @db.VarChar(64)
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
 }

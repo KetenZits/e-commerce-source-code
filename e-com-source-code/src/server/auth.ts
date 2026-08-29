@@ -5,6 +5,11 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { env, hasGoogleOAuth } from "@/lib/env";
 import { signInSchema } from "@/server/schemas";
+import {
+  clearLoginFailures,
+  isAccountLocked,
+  recordLoginFailure,
+} from "@/server/services/tokens";
 
 const providers: NextAuthOptions["providers"] = [
   Credentials({
@@ -18,8 +23,13 @@ const providers: NextAuthOptions["providers"] = [
       if (!parsed.success) return null;
       const user = await db.user.findUnique({ where: { email: parsed.data.email } });
       if (!user?.passwordHash) return null;
+      if (await isAccountLocked(user.id)) return null;
       const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
-      if (!ok) return null;
+      if (!ok) {
+        await recordLoginFailure(user.id);
+        return null;
+      }
+      await clearLoginFailures(user.id);
       return {
         id: user.id,
         email: user.email,
@@ -45,18 +55,34 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin",
   },
+  cookies: {
+    sessionToken: {
+      name: env.NODE_ENV === "production" ? "__Secure-next-auth.session-token" : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: env.NODE_ENV === "production",
+      },
+    },
+  },
   providers,
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
         await db.user.upsert({
           where: { email: user.email },
-          update: { name: user.name ?? undefined, image: user.image ?? undefined },
+          update: {
+            name: user.name ?? undefined,
+            image: user.image ?? undefined,
+            emailVerified: new Date(),
+          },
           create: {
             email: user.email,
             name: user.name,
             image: user.image,
             role: "BUYER",
+            emailVerified: new Date(),
           },
         });
       }

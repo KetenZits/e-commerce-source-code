@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { formatAttributes } from "@/lib/product";
 import { authOptions } from "@/server/auth";
 import { serverCaller } from "@/trpc/server";
+import { OrderCustomerActions } from "@/components/orders/order-customer-actions";
 
 const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
   PENDING: "brass",
@@ -17,13 +18,20 @@ const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
   REFUNDED: "brick",
 };
 
-export default async function OrderConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderConfirmationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ g?: string }>;
+}) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/auth/signin");
   const { id } = await params;
-  const order = await (await serverCaller()).order.byId({ orderId: id });
+  const { g } = await searchParams;
+  if (!session?.user && !g) redirect("/auth/signin");
+  const order = await (await serverCaller()).order.byId({ orderId: id, guestToken: g });
   if (!order) notFound();
-  const digital = order.fulfillmentType === "DIGITAL";
+  const digital = order.fulfillmentType !== "PHYSICAL";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
@@ -37,7 +45,7 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
       </h1>
       <StatusChip tone={tone[order.status] ?? "muted"}>{order.status.toLowerCase()}</StatusChip>
       <p className="text-muted-foreground">
-        {digital
+        {order.fulfillmentType === "DIGITAL"
           ? order.status === "DELIVERED"
             ? "Your access details are available below."
             : "Payment is confirmed. The store is preparing your digital access details."
@@ -54,9 +62,6 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm leading-6">
             {order.digitalDelivery}
           </pre>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Keep these details private. They are only shown to the owner of this order.
-          </p>
         </section>
       ) : null}
       <SectionDivider />
@@ -72,8 +77,20 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
             <span className="font-tabular">{formatMoney(item.unitPriceCents * item.quantity)}</span>
           </div>
         ))}
+        {order.discountCents ? (
+          <div className="flex justify-between text-sm text-primary">
+            <span>Discount</span>
+            <span className="font-tabular">-{formatMoney(order.discountCents)}</span>
+          </div>
+        ) : null}
+        {order.taxCents ? (
+          <div className="flex justify-between text-sm">
+            <span>VAT</span>
+            <span className="font-tabular">{formatMoney(order.taxCents)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between text-sm">
-          <span>{digital ? "Digital delivery" : "Shipping"}</span>
+          <span>{order.fulfillmentType === "DIGITAL" ? "Digital delivery" : "Shipping"}</span>
           <span className="font-tabular">{formatMoney(order.shippingFeeCents)}</span>
         </div>
         <div className="flex justify-between font-medium">
@@ -89,6 +106,12 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           {order.address.postalCode}
         </p>
       ) : null}
+      <OrderCustomerActions
+        orderId={order.id}
+        status={order.status}
+        guestToken={g}
+        invoiceNumber={order.invoiceNumber}
+      />
     </div>
   );
 }

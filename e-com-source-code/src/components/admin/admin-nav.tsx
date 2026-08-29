@@ -8,10 +8,14 @@ import type { StoreMode } from "@/lib/storefront-config";
 const LINKS = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Products" },
+  { href: "/admin/categories", label: "Categories" },
   { href: "/admin/inventory", label: "Inventory" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/promotions", label: "Promotions" },
+  { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/shipping", label: "Shipping" },
   { href: "/admin/payments", label: "Payments" },
+  { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/storefront", label: "Storefront" },
 ];
 

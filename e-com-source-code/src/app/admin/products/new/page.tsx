@@ -26,6 +26,7 @@ export default async function NewProductPage() {
           currency: "THB",
           images: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80"],
           status: "DRAFT",
+          fulfillmentType: digital ? "DIGITAL" : "PHYSICAL",
           variants: [
             {
               sku: digital ? "ATL-DIGI-PC-GLB" : "ATL-NEW-M-NAT",

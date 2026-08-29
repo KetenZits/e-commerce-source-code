@@ -11,15 +11,13 @@ import {
 } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  ParallaxPlane,
-  ParallaxScene,
-} from "@/components/motion/parallax-scene";
 import { Pressable } from "@/components/motion/pressable";
 import type { ProductTileData } from "@/components/product/product-tile";
+import OrbitImages from "@/components/reactbits/OrbitImages";
 import { formatMoney } from "@/lib/money";
 import { MOTION_DURATION, PREMIUM_EASE } from "@/lib/motion";
 import type { StorefrontConfig } from "@/lib/storefront-config";
+import HeroImage from "@/components/reactbits/HeroImage";
 
 export function HomeHero({
   product,
@@ -44,7 +42,27 @@ export function HomeHero({
   const copyOpacity = useTransform(scrollYProgress, [0, 0.8], [1, reduceMotion ? 1 : 0.25]);
   const heroImage = content.imageUrl || product?.images[0];
   const customImage = Boolean(content.imageUrl);
-
+  const visualImages = Array.from(
+    new Set([
+      ...(heroImage ? [heroImage] : []),
+      ...(product?.images ?? []),
+    ]),
+  );
+  const orbitImages =
+    visualImages.length > 0
+      ? Array.from(
+          { length: Math.max(5, visualImages.length) },
+          (_, index) => visualImages[index % visualImages.length],
+        ).slice(0, 6)
+      : [];
+    const images = [
+        "https://picsum.photos/300/300?grayscale&random=1",
+        "https://picsum.photos/300/300?grayscale&random=2",
+        "https://picsum.photos/300/300?grayscale&random=3",
+        "https://picsum.photos/300/300?grayscale&random=4",
+        "https://picsum.photos/300/300?grayscale&random=5",
+        "https://picsum.photos/300/300?grayscale&random=6",
+    ];
   return (
     <section
       ref={ref}
@@ -108,46 +126,56 @@ export function HomeHero({
       </motion.div>
 
       {heroImage ? (
-        <motion.div style={{ y: imageY }} className="relative lg:justify-self-end">
-          <ParallaxScene className="relative" intensity={5}>
-            <ParallaxPlane
-              depth={-28}
-              className="absolute -inset-4 rounded-[1.25rem] border border-brass/20 bg-brass/8"
+        <motion.div
+          style={{ y: imageY }}
+          data-testid="hero-orbit"
+          className="relative w-full max-w-none justify-self-center lg:w-[40rem] lg:justify-self-end"
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            duration: MOTION_DURATION.slow,
+            delay: 0.14,
+            ease: PREMIUM_EASE,
+          }}
+        >
+          <HeroImage
+            images={images}
+            shape="square"
+            radiusX={560}
+            radiusY={300}
+            rotation={-8}
+            duration={100}
+            itemSize={225}
+            responsive={true}
+            radius={540}
+            direction="normal"
+            fill
+            showPath
+            paused={false}
+          />
+          {/* {!customImage && product ? (
+            <Link
+              href={`/products/${product.slug}`}
+              className="mx-auto -mt-8 flex max-w-md items-start justify-between gap-4 rounded-xl border border-border/80 bg-background/90 px-4 py-3 shadow-sm backdrop-blur-md transition-colors hover:border-brass/45"
             >
-              <span className="sr-only">Decorative depth layer</span>
-            </ParallaxPlane>
-            <ParallaxPlane depth={28}>
-              <Link
-                href={customImage ? content.primaryHref : `/products/${product?.slug}`}
-                className="group block"
-              >
-                <div className="premium-depth relative aspect-4/5 w-full overflow-hidden rounded-xl border border-border bg-card sm:w-120 lg:w-lg">
-                  <Image
-                    src={heroImage}
-                    alt={customImage ? content.title : (product?.title ?? content.title)}
-                    fill
-                    priority
-                    className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
-                    sizes="(min-width: 1024px) 32rem, 90vw"
-                  />
-                  <span className="absolute inset-0 bg-linear-to-t from-foreground/12 via-transparent to-transparent" />
-                </div>
-                {!customImage && product ? (
-                  <div className="mt-3 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">
-                        {product.brand}
-                      </p>
-                      <p className="font-display mt-1 text-lg">{product.title}</p>
-                    </div>
-                    <p className="font-tabular text-sm">
-                      {formatMoney(product.minPriceCents, product.currency)}
-                    </p>
-                  </div>
-                ) : null}
-              </Link>
-            </ParallaxPlane>
-          </ParallaxScene>
+              <div>
+                <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                  {product.brand}
+                </p>
+                <p className="font-display mt-1 text-lg">{product.title}</p>
+              </div>
+              <p className="font-tabular text-sm">
+                {formatMoney(product.minPriceCents, product.currency)}
+              </p>
+            </Link>
+          ) : (
+            <Link
+              href={content.primaryHref}
+              className="mx-auto -mt-8 block w-fit rounded-full border border-border/80 bg-background/90 px-4 py-2 text-sm shadow-sm backdrop-blur-md transition-colors hover:border-brass/45"
+            >
+              {content.primaryLabel}
+            </Link>
+          )} */}
         </motion.div>
       ) : null}
     </section>

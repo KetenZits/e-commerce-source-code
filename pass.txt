@@ -1,0 +1,4 @@
+Logins
+
+Admin: admin@atelier.dev / admin1234
+Buyer: buyer@atelier.dev / buyer1234

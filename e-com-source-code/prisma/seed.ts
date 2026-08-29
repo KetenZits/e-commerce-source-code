@@ -6,6 +6,14 @@ import { BANGKOK_METRO } from "../src/lib/constants";
 const db = new PrismaClient();
 
 async function main() {
+  await db.digitalCode.deleteMany();
+  await db.inventoryMovement.deleteMany();
+  await db.paymentTransaction.deleteMany();
+  await db.refund.deleteMany();
+  await db.auditLog.deleteMany();
+  await db.authToken.deleteMany();
+  await db.promotion.deleteMany();
+  await db.wishlistItem.deleteMany();
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
   await db.cartItem.deleteMany();
@@ -30,6 +38,7 @@ async function main() {
       name: "Admin",
       passwordHash: adminHash,
       role: "ADMIN",
+      emailVerified: new Date(),
     },
   });
 
@@ -39,6 +48,7 @@ async function main() {
       name: "Buyer",
       passwordHash: buyerHash,
       role: "BUYER",
+      emailVerified: new Date(),
     },
   });
 
@@ -239,6 +249,39 @@ async function main() {
           { sku: "ATL-TOTE-INK", attributes: { color: "Ink" }, priceCents: 69000, stockQty: 16, weightGrams: 280 },
         ],
       },
+    },
+  });
+
+  await db.product.create({
+    data: {
+      slug: "studio-lookbook",
+      title: "Studio lookbook",
+      description:
+        "A digital lookbook with studio notes, fabric details, and care guides. Access is delivered to the order after PromptPay is confirmed.",
+      brand: "Atelier",
+      categoryId: accessories.id,
+      basePriceCents: 39000,
+      fulfillmentType: "DIGITAL",
+      images: [
+        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=1400&q=80",
+      ],
+      status: "PUBLISHED",
+      variants: {
+        create: [
+          { sku: "ATL-LOOK-PDF", attributes: { size: "PDF", color: "Global" }, priceCents: 39000, stockQty: 100, weightGrams: 0 },
+        ],
+      },
+    },
+  });
+
+  await db.promotion.create({
+    data: {
+      code: "WELCOME10",
+      name: "Welcome 10%",
+      type: "PERCENTAGE",
+      value: 1000,
+      minSubtotalCents: 0,
+      active: true,
     },
   });
 

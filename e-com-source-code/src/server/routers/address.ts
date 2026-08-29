@@ -25,6 +25,26 @@ export const addressRouter = router({
     });
   }),
 
+  update: protectedProcedure
+    .input(addressSchema.extend({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const existing = await ctx.db.address.findFirst({
+        where: { id, userId: ctx.user.id },
+      });
+      if (!existing) return null;
+      if (data.isDefault) {
+        await ctx.db.address.updateMany({ where: { userId: ctx.user.id }, data: { isDefault: false } });
+      }
+      return ctx.db.address.update({
+        where: { id },
+        data: {
+          ...data,
+          addressLine2: data.addressLine2 || null,
+        },
+      });
+    }),
+
   remove: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
     await ctx.db.address.deleteMany({ where: { id: input.id, userId: ctx.user.id } });
     return { ok: true };

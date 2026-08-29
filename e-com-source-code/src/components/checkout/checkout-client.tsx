@@ -11,12 +11,22 @@ import { formatMoney } from "@/lib/money";
 import { formatAttributes } from "@/lib/product";
 import { trpc } from "@/trpc/client";
 
-export function PaymentClient({ orderId }: { orderId: string }) {
+export function PaymentClient({
+  orderId,
+  guestToken,
+}: {
+  orderId: string;
+  guestToken?: string;
+}) {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
-  const [slip, setSlip] = useState("");
+  const [slipUrl, setSlipUrl] = useState<string | undefined>();
+  const [uploading, setUploading] = useState(false);
   const [phase, setPhase] = useState<"waiting" | "verifying">("waiting");
-  const order = trpc.order.byId.useQuery({ orderId }, { refetchInterval: 2000 });
+  const order = trpc.order.byId.useQuery(
+    { orderId, guestToken },
+    { refetchInterval: 2000 },
+  );
   const transfer = trpc.order.markTransferred.useMutation({
     onSuccess: () => {
       setPhase("verifying");
@@ -33,15 +43,36 @@ export function PaymentClient({ orderId }: { orderId: string }) {
   useEffect(() => {
     if (!order.data) return;
     if (order.data.status !== "PENDING") {
-      const timeout = window.setTimeout(() => router.push(`/orders/${orderId}`), 800);
+      const suffix = guestToken ? `?g=${guestToken}` : "";
+      const timeout = window.setTimeout(() => router.push(`/orders/${orderId}${suffix}`), 800);
       return () => window.clearTimeout(timeout);
     }
-  }, [order.data, orderId, router]);
+  }, [order.data, orderId, router, guestToken]);
 
   const remaining = useMemo(() => {
     if (!order.data) return 0;
     return Math.max(0, differenceInSeconds(new Date(order.data.expiresAt), new Date(now)));
   }, [order.data, now]);
+
+  async function uploadSlip(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const data = new FormData();
+      data.set("file", file);
+      data.set("orderId", orderId);
+      if (guestToken) data.set("guestToken", guestToken);
+      const res = await fetch("/api/checkout/slip", { method: "POST", body: data });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !json.url) throw new Error(json.error ?? "Upload failed");
+      setSlipUrl(json.url);
+      toast.message("Slip uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   if (!order.data) return <p className="text-sm text-muted-foreground">Loading payment…</p>;
 
@@ -68,11 +99,21 @@ export function PaymentClient({ orderId }: { orderId: string }) {
             <span className="font-tabular">{formatMoney(item.unitPriceCents * item.quantity)}</span>
           </div>
         ))}
+        {order.data.discountCents ? (
+          <div className="mt-2 flex justify-between text-sm text-primary">
+            <span>Discount</span>
+            <span className="font-tabular">-{formatMoney(order.data.discountCents)}</span>
+          </div>
+        ) : null}
+        {order.data.taxCents ? (
+          <div className="mt-2 flex justify-between text-sm">
+            <span>VAT</span>
+            <span className="font-tabular">{formatMoney(order.data.taxCents)}</span>
+          </div>
+        ) : null}
         <div className="mt-3 flex justify-between text-sm">
           <span>
-            {order.data.fulfillmentType === "DIGITAL"
-              ? "Digital delivery"
-              : "Shipping"}
+            {order.data.fulfillmentType === "DIGITAL" ? "Digital delivery" : "Shipping"}
           </span>
           <span className="font-tabular">{formatMoney(order.data.shippingFeeCents)}</span>
         </div>
@@ -105,18 +146,24 @@ export function PaymentClient({ orderId }: { orderId: string }) {
               Demo mode: no real transfer is required. Press I&apos;ve transferred to confirm the order.
             </p>
           ) : (
-            <p className="text-center text-xs text-muted-foreground">Scan with a Thai bank app, then confirm below.</p>
+            <p className="text-center text-xs text-muted-foreground">Scan with a Thai bank app, then upload the slip and confirm below.</p>
           )}
         </div>
       ) : null}
 
       {displayPhase !== "confirmed" ? (
         <div className="space-y-3">
-          <Input placeholder="Slip image URL (optional)" value={slip} onChange={(event) => setSlip(event.target.value)} />
+          <Input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={(event) => uploadSlip(event.target.files?.[0])}
+          />
+          {slipUrl ? <p className="text-xs text-primary">Slip attached</p> : null}
           <Button
             className="w-full"
-            disabled={transfer.isPending || remaining === 0}
-            onClick={() => transfer.mutate({ orderId, slipImageUrl: slip || undefined })}
+            disabled={transfer.isPending || remaining === 0 || uploading}
+            onClick={() => transfer.mutate({ orderId, guestToken, slipImageUrl: slipUrl })}
           >
             I&apos;ve transferred
           </Button>

@@ -21,7 +21,7 @@ export function ProductMarquee({
   return (
     <div
       className={cn(
-        "product-marquee -mx-4 px-4 py-4 sm:-mx-8 sm:px-8",
+        "product-marquee -mx-4 px-4 py-4",
         className,
       )}
       aria-label="More products"

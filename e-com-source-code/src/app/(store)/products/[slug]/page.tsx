@@ -1,13 +1,34 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { AddToCart } from "@/components/product/add-to-cart";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductMarquee } from "@/components/product/product-marquee";
+import { ReviewForm } from "@/components/product/review-form";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionDivider } from "@/components/section-divider";
 import { formatMoney } from "@/lib/money";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { serverCaller } from "@/trpc/server";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await (await serverCaller()).product.bySlug({ slug });
+  if (!product) return { title: "Product" };
+  return {
+    title: product.seoTitle || product.title,
+    description: product.seoDescription || product.description.slice(0, 160),
+    openGraph: {
+      title: product.seoTitle || product.title,
+      description: product.seoDescription || product.description.slice(0, 160),
+      images: product.images.slice(0, 1),
+    },
+  };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -59,7 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div className="grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs text-muted-foreground">
             <span>PromptPay checkout</span>
             <span className="text-right">
-              {storefront.storeMode === "digital"
+              {product.fulfillmentType === "DIGITAL" || storefront.storeMode === "digital"
                 ? "Secure access after payment"
                 : "Tracked Thailand delivery"}
             </span>
@@ -67,6 +88,25 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </aside>
         </Reveal>
       </div>
+      {product.reviews.length ? (
+        <section className="space-y-4">
+          <h2 className="font-display text-2xl">Reviews</h2>
+          <p className="text-sm text-muted-foreground">
+            {product.rating?.toFixed(1)} / 5 · {product.reviewCount} review(s)
+          </p>
+          <div className="space-y-3">
+            {product.reviews.map((review) => (
+              <article key={review.id} className="rounded-xl border border-border bg-card p-4">
+                <p className="text-sm font-medium">
+                  {review.user.name ?? "Customer"} · {review.rating}/5
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.comment}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <ReviewForm productId={product.id} />
       {related.length > 1 ? (
         <>
           <SectionDivider />
@@ -81,6 +121,27 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </section>
         </>
       ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.title,
+            description: product.description,
+            image: product.images,
+            brand: product.brand,
+            offers: {
+              "@type": "Offer",
+              priceCurrency: product.currency,
+              price: (minPrice / 100).toFixed(2),
+              availability: inStock
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+            },
+          }),
+        }}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
+import { addMinutes } from "date-fns";
 import { Resend } from "resend";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 export type NotificationPayload = {
   event: string;
@@ -65,6 +67,10 @@ class EmailAdapter implements NotificationAdapter {
 
 const adapters: NotificationAdapter[] = [new DiscordAdapter(), new TelegramAdapter(), new EmailAdapter()];
 
+function adapterFor(channel: string) {
+  return adapters.find((adapter) => adapter.channel === channel);
+}
+
 export async function notify(payload: NotificationPayload) {
   for (const adapter of adapters) {
     const log = await db.notificationLog.create({
@@ -73,6 +79,7 @@ export async function notify(payload: NotificationPayload) {
         event: payload.event,
         payload: payload as unknown as object,
         status: "QUEUED",
+        attemptCount: 1,
       },
     });
     try {
@@ -82,13 +89,51 @@ export async function notify(payload: NotificationPayload) {
         data: { status: "SENT", sentAt: new Date() },
       });
     } catch (error) {
+      logger.warn("Notification failed", { channel: adapter.channel, error: String(error) });
       await db.notificationLog.update({
         where: { id: log.id },
         data: {
           status: "FAILED",
           error: error instanceof Error ? error.message : "Unknown error",
+          nextAttemptAt: addMinutes(new Date(), 5),
         },
       });
     }
   }
+}
+
+export async function retryFailedNotifications(limit = 20) {
+  const due = await db.notificationLog.findMany({
+    where: {
+      status: "FAILED",
+      nextAttemptAt: { lte: new Date() },
+      attemptCount: { lt: 5 },
+    },
+    take: limit,
+    orderBy: { nextAttemptAt: "asc" },
+  });
+  let retried = 0;
+  for (const log of due) {
+    const adapter = adapterFor(log.channel);
+    if (!adapter) continue;
+    const payload = log.payload as unknown as NotificationPayload;
+    try {
+      await adapter.send(payload);
+      await db.notificationLog.update({
+        where: { id: log.id },
+        data: { status: "SENT", sentAt: new Date(), error: null, nextAttemptAt: null },
+      });
+    } catch (error) {
+      await db.notificationLog.update({
+        where: { id: log.id },
+        data: {
+          attemptCount: { increment: 1 },
+          error: error instanceof Error ? error.message : "Unknown error",
+          nextAttemptAt: addMinutes(new Date(), 5 * (log.attemptCount + 1)),
+        },
+      });
+    }
+    retried += 1;
+  }
+  return retried;
 }

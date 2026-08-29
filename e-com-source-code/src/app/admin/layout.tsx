@@ -4,12 +4,13 @@ import type { ReactNode } from "react";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { SiteHeader } from "@/components/layout/site-header";
 import { getStorefrontConfig } from "@/lib/storefront-config";
+import { canAccessAdmin } from "@/lib/roles";
 import { authOptions } from "@/server/auth";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/auth/signin?callbackUrl=/admin");
-  if (session.user.role !== "ADMIN") redirect("/");
+  if (!canAccessAdmin(session.user.role)) redirect("/");
   const storefront = await getStorefrontConfig();
 
   return (
