@@ -88,7 +88,12 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === "update" && session && typeof session === "object") {
+        const next = session as { name?: string | null; image?: string | null };
+        if (typeof next.name === "string") token.name = next.name;
+        if ("image" in next) token.picture = next.image ?? undefined;
+      }
       const email = user?.email ?? token.email;
       if (!email) return token;
       const dbUser = await db.user.findUnique({ where: { email } });

@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatAttributes, asAttributes } from "@/lib/product";
+import { StockAlertForm } from "@/components/product/stock-alert-form";
 import { trpc } from "@/trpc/client";
 
 type Variant = {
@@ -15,6 +16,7 @@ type Variant = {
   attributes: unknown;
   priceCents: number;
   stockQty: number;
+  reservedQty?: number;
 };
 
 export function AddToCart({ variants }: { variants: Variant[] }) {
@@ -40,13 +42,14 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
       variants.map((variant) => ({
         id: variant.id,
         label: formatAttributes(variant.attributes) || variant.sku,
-        stockQty: variant.stockQty,
+        stockQty: Math.max(0, variant.stockQty - (variant.reservedQty ?? 0)),
       })),
     [variants]
   );
 
   if (!selected) return null;
-  const out = selected.stockQty < 1;
+  const available = Math.max(0, selected.stockQty - (selected.reservedQty ?? 0));
+  const out = available < 1;
 
   return (
     <div className="space-y-4">
@@ -82,8 +85,9 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
       </motion.div>
       <p className="font-tabular text-xs text-muted-foreground">
         {asAttributes(selected.attributes).color ? `SKU ${selected.sku}` : selected.sku}
-        {out ? "" : ` · ${selected.stockQty} in stock`}
+        {out ? "" : ` · ${available} in stock`}
       </p>
+      {out ? <StockAlertForm variantId={selected.id} /> : null}
     </div>
   );
 }

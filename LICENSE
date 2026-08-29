@@ -1,0 +1,26 @@
+Regular Source License
+
+Copyright (c) 2026 the original seller of this package.
+
+This package is sold as source code for a single end product. It is not open
+source. Third-party libraries bundled or installed with npm keep their own
+licenses; see e-com-source-code/THIRD_PARTY.md.
+
+You may
+- Use this source to run and customize one live store (one production domain).
+- Modify the code, branding, catalog, and content for that store.
+- Hire developers to customize it for that store.
+- Create private staging and development copies of the same store.
+
+You may not
+- Redistribute, resell, sublicense, or share the source as a template or competing product.
+- Use the source to power multiple unrelated client stores without purchasing additional licenses.
+- Remove or replace this license file and then claim the work as your original template.
+
+No warranty
+The software is provided as-is. The seller is not liable for lost sales, data loss,
+failed payments, or deployment mistakes. You are responsible for secrets, hosting,
+PromptPay configuration, tax, and legal copy before taking real orders.
+
+Support, if offered at the point of sale, covers installation questions for the
+unmodified package. Custom feature work is not included unless contracted separately.

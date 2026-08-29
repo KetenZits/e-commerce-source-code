@@ -210,11 +210,12 @@
     border-color 450ms var(--motion-premium);
 }
 
-.group\/tilt:hover .premium-depth {
-  border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+.group\/tilt:hover .premium-depth,
+.group:hover .premium-depth {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
   box-shadow:
-    0 2px 0 color-mix(in srgb, var(--foreground) 8%, transparent),
-    0 28px 65px color-mix(in srgb, var(--foreground) 13%, transparent);
+    0 1px 0 color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 22px 50px color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 .product-marquee {

@@ -7,6 +7,8 @@ import {
   resetPasswordSchema,
   updateProfileSchema,
   verifyEmailSchema,
+  changePasswordSchema,
+  setPasswordSchema,
 } from "@/server/schemas";
 import { rateLimit } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
@@ -110,18 +112,115 @@ export const authRouter = router({
   }),
 
   me: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findUnique({
+    const user = await ctx.db.user.findUnique({
       where: { id: ctx.user.id },
-      select: { id: true, email: true, name: true, emailVerified: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        emailVerified: true,
+        role: true,
+        createdAt: true,
+        passwordHash: true,
+      },
     });
+    if (!user) return null;
+    const { passwordHash, ...safe } = user;
+    return { ...safe, hasPassword: Boolean(passwordHash) };
   }),
 
   updateProfile: protectedProcedure.input(updateProfileSchema).mutation(async ({ ctx, input }) => {
-    return ctx.db.user.update({
+    const user = await ctx.db.user.update({
       where: { id: ctx.user.id },
       data: { name: input.name },
       select: { id: true, email: true, name: true },
     });
+    await writeAuditLog({
+      actorId: ctx.user.id,
+      action: "auth.profile-updated",
+      entityType: "User",
+      entityId: ctx.user.id,
+      ipAddress: ctx.ip,
+    });
+    return user;
+  }),
+
+  changePassword: protectedProcedure.input(changePasswordSchema).mutation(async ({ ctx, input }) => {
+    await limitAuth(ctx.ip, "change-password");
+    const user = await ctx.db.user.findUnique({ where: { id: ctx.user.id } });
+    if (!user?.passwordHash) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This account uses a social login. Set a password first.",
+      });
+    }
+    const matches = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    if (!matches) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect." });
+    }
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    await ctx.db.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+    await writeAuditLog({
+      actorId: user.id,
+      action: "auth.password-changed",
+      entityType: "User",
+      entityId: user.id,
+      ipAddress: ctx.ip,
+    });
+    return { ok: true };
+  }),
+
+  setPassword: protectedProcedure.input(setPasswordSchema).mutation(async ({ ctx, input }) => {
+    await limitAuth(ctx.ip, "set-password");
+    const user = await ctx.db.user.findUnique({ where: { id: ctx.user.id } });
+    if (!user) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Account not found." });
+    }
+    if (user.passwordHash) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A password is already set. Use change password instead.",
+      });
+    }
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    await ctx.db.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+    await writeAuditLog({
+      actorId: user.id,
+      action: "auth.password-set",
+      entityType: "User",
+      entityId: user.id,
+      ipAddress: ctx.ip,
+    });
+    return { ok: true };
+  }),
+
+  resendVerification: protectedProcedure.mutation(async ({ ctx }) => {
+    await limitAuth(ctx.ip, "verify-resend");
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { id: true, email: true, emailVerified: true },
+    });
+    if (!user) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Account not found." });
+    }
+    if (user.emailVerified) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Email is already verified." });
+    }
+    const token = await issueAuthToken(user.id, "EMAIL_VERIFY", 60 * 24);
+    await notify({
+      event: "auth.verify-email",
+      subject: "Confirm your account",
+      text: `Confirm your email: ${appUrl(`/auth/verify?token=${token}`)}`,
+      data: { email: user.email },
+    });
+    return { ok: true };
   }),
 
   requestDataExport: protectedProcedure.mutation(async ({ ctx }) => {

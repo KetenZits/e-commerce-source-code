@@ -1,0 +1,6 @@
+pass.txt
+.env
+.env.local
+.env.*.local
+**/.next/
+**/node_modules/

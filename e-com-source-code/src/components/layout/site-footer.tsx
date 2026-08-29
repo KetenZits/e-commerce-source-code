@@ -1,22 +1,28 @@
 import Link from "next/link";
 import { SectionDivider } from "@/components/section-divider";
 import { SITE_NAME } from "@/lib/constants";
-import type { StoreMode } from "@/lib/storefront-config";
+import type { StorefrontConfig } from "@/lib/storefront-defaults";
 
 export function SiteFooter({
   siteName = SITE_NAME,
   storeMode = "physical",
+  city = "Bangkok",
+  legalName,
 }: {
   siteName?: string;
-  storeMode?: StoreMode;
+  storeMode?: StorefrontConfig["storeMode"];
+  city?: string;
+  legalName?: string;
 }) {
   return (
     <footer className="mt-auto">
       <div className="mx-auto max-w-6xl px-4 py-10">
         <SectionDivider className="mb-8" />
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
-          <span>{siteName} · Bangkok</span>
-          <div className="flex gap-4">
+          <span>
+            {legalName || siteName} · {city}
+          </span>
+          <div className="flex flex-wrap gap-4">
             <Link href="/categories" className="hover:text-foreground">
               Collections
             </Link>

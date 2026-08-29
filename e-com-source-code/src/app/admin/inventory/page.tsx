@@ -1,15 +1,18 @@
+import { InventoryMovements } from "@/components/admin/inventory-movements";
 import { InventoryTable } from "@/components/admin/inventory-table";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { serverCaller } from "@/trpc/server";
 
 export default async function InventoryPage() {
-  const [rows, storefront] = await Promise.all([
-    (await serverCaller()).admin.inventory(),
+  const caller = await serverCaller();
+  const [rows, movements, storefront] = await Promise.all([
+    caller.admin.inventory(),
+    caller.admin.inventoryMovements(),
     getStorefrontConfig(),
   ]);
   const low = rows.filter((row) => row.low).length;
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="font-display text-2xl">Inventory</h1>
         <p className="text-sm text-muted-foreground">
@@ -18,6 +21,10 @@ export default async function InventoryPage() {
         </p>
       </div>
       <InventoryTable rows={rows} storeMode={storefront.storeMode} />
+      <section className="space-y-3">
+        <h2 className="font-display text-xl">Stock history</h2>
+        <InventoryMovements rows={movements} />
+      </section>
     </div>
   );
 }

@@ -42,6 +42,8 @@ import {
 } from "@/server/services/digital-delivery";
 import { importDigitalCodes } from "@/server/services/digital-codes";
 import { isLowStock, setStockAbsolute } from "@/server/services/inventory";
+import { notifyStockAlerts } from "@/server/services/stock-alerts";
+import { listStockAlerts } from "@/server/services/stock-alert-store";
 import { notify, retryFailedNotifications } from "@/server/services/notifications";
 import { enqueue } from "@/server/queue";
 import { writeAuditLog } from "@/server/services/audit";
@@ -240,9 +242,18 @@ export const adminRouter = router({
     }),
 
   adjustStock: catalogProcedure.input(stockAdjustSchema).mutation(async ({ ctx, input }) => {
-    return ctx.db.$transaction((tx) =>
+    const previous = await ctx.db.productVariant.findUnique({ where: { id: input.variantId } });
+    const result = await ctx.db.$transaction((tx) =>
       setStockAbsolute(tx, input.variantId, input.stockQty, input.reason ?? "Manual adjustment", ctx.user.id),
     );
+    const wasUnavailable = previous
+      ? previous.stockQty - previous.reservedQty <= 0
+      : false;
+    const nowAvailable = result.stockQty - (previous?.reservedQty ?? 0) > 0;
+    if (wasUnavailable && nowAvailable) {
+      await notifyStockAlerts(input.variantId);
+    }
+    return result;
   }),
 
   importDigitalCodes: catalogProcedure.input(digitalCodeImportSchema).mutation(async ({ ctx, input }) => {
@@ -528,4 +539,49 @@ export const adminRouter = router({
         select: { id: true, email: true, role: true },
       });
     }),
+
+  exportProducts: catalogProcedure.query(async ({ ctx }) => {
+    const products = await ctx.db.product.findMany({
+      include: { category: true, variants: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return products.flatMap((product) =>
+      product.variants.map((variant) => ({
+        productId: product.id,
+        slug: product.slug,
+        title: product.title,
+        brand: product.brand,
+        category: product.category.name,
+        status: product.status,
+        fulfillment: product.fulfillmentType,
+        sku: variant.sku,
+        priceCents: variant.priceCents,
+        stockQty: variant.stockQty,
+        reservedQty: variant.reservedQty,
+      })),
+    );
+  }),
+
+  exportOrders: orderStaffProcedure.query(async ({ ctx }) => {
+    const orders = await ctx.db.order.findMany({
+      include: { user: { select: { email: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 2000,
+    });
+    return orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      fulfillmentType: order.fulfillmentType,
+      email: order.guestEmail ?? order.user?.email ?? "",
+      totalCents: order.totalCents,
+      taxCents: order.taxCents,
+      discountCents: order.discountCents,
+      promotionCode: order.promotionCode ?? "",
+      createdAt: order.createdAt.toISOString(),
+    }));
+  }),
+
+  stockAlerts: catalogProcedure.query(async ({ ctx }) => {
+    return listStockAlerts(ctx.db);
+  }),
 });

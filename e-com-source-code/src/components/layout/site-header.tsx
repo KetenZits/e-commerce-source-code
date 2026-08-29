@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { SITE_NAME } from "@/lib/constants";
+import { canAccessAdmin } from "@/lib/roles";
 import type { StoreMode } from "@/lib/storefront-config";
 
 const BASE_TABS = [
@@ -91,12 +92,20 @@ export function SiteHeader({
                   <Button
                     variant="outline"
                     nativeButton={false}
+                    render={<Link href="/dashboard" />}
+                    onClick={closeMobileMenu}
+                  >
+                    Account
+                  </Button>
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
                     render={<Link href="/dashboard/orders" />}
                     onClick={closeMobileMenu}
                   >
                     Orders
                   </Button>
-                  {session.user.role === "ADMIN" ? (
+                  {canAccessAdmin(session.user.role) ? (
                     <Button
                       variant="outline"
                       nativeButton={false}
@@ -166,14 +175,34 @@ export function SiteHeader({
           <span className="text-xs text-muted-foreground">…</span>
         ) : session?.user ? (
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-              {session.user.name ?? session.user.email}
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="gap-2 pl-1.5" />}>
+              {session.user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={session.user.image}
+                  alt=""
+                  className="size-6 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] tracking-wide">
+                  {(session.user.name ?? session.user.email ?? "A").slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="max-w-36 truncate">
+                {session.user.name ?? session.user.email}
+              </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard" />}>
+                Profile
+              </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/orders" />}>
                 Orders
               </DropdownMenuItem>
-              {session.user.role === "ADMIN" ? (
+              <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/addresses" />}>
+                Addresses
+              </DropdownMenuItem>
+              {canAccessAdmin(session.user.role) ? (
                 <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
                   Admin
                 </DropdownMenuItem>

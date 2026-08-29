@@ -30,7 +30,7 @@ export function WishlistButton({
         toggle(productId);
       }}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground",
+        "inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-card/90 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-primary/25 hover:bg-card",
         className
       )}
     >

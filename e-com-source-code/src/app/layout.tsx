@@ -40,14 +40,35 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const storefront = await getStorefrontConfig();
+  const origin = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+
   return (
     <html
-      lang="en"
+      lang={storefront.business.documentLanguage}
       className={`${display.variable} ${displayThai.variable} ${body.variable} ${mono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col bg-background">
         <Providers>{children}</Providers>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: storefront.business.legalName || storefront.siteName,
+              url: origin,
+              email: storefront.business.contactEmail,
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: storefront.business.address,
+                addressLocality: storefront.business.city,
+                addressCountry: storefront.business.country,
+              },
+            }),
+          }}
+        />
       </body>
     </html>
   );

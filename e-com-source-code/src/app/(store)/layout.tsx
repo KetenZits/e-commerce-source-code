@@ -35,6 +35,8 @@ export default async function MainLayout({ children }: { children: ReactNode }) 
         <SiteFooter
           siteName={storefront.siteName}
           storeMode={storefront.storeMode}
+          city={storefront.business.city}
+          legalName={storefront.business.legalName}
         />
       </div>
     </div>

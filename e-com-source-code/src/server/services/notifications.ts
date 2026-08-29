@@ -71,6 +71,38 @@ function adapterFor(channel: string) {
   return adapters.find((adapter) => adapter.channel === channel);
 }
 
+export async function notifyChannel(channel: string, payload: NotificationPayload) {
+  const adapter = adapterFor(channel);
+  if (!adapter) throw new Error(`Unknown notification channel: ${channel}`);
+  const log = await db.notificationLog.create({
+    data: {
+      channel: adapter.channel,
+      event: payload.event,
+      payload: payload as unknown as object,
+      status: "QUEUED",
+      attemptCount: 1,
+    },
+  });
+  try {
+    await adapter.send(payload);
+    await db.notificationLog.update({
+      where: { id: log.id },
+      data: { status: "SENT", sentAt: new Date() },
+    });
+  } catch (error) {
+    logger.warn("Notification failed", { channel: adapter.channel, error: String(error) });
+    await db.notificationLog.update({
+      where: { id: log.id },
+      data: {
+        status: "FAILED",
+        error: error instanceof Error ? error.message : "Unknown error",
+        nextAttemptAt: addMinutes(new Date(), 5),
+      },
+    });
+    throw error;
+  }
+}
+
 export async function notify(payload: NotificationPayload) {
   for (const adapter of adapters) {
     const log = await db.notificationLog.create({

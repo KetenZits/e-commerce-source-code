@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HomeHero } from "@/components/home/home-hero";
 import { ProductTile } from "@/components/product/product-tile";
 import { ProductMarquee } from "@/components/product/product-marquee";
+import { RecentlyViewed } from "@/components/product/recently-viewed";
 import { Reveal } from "@/components/motion/reveal";
 import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
 import { TiltCard } from "@/components/motion/tilt-card";
@@ -55,7 +56,7 @@ export default async function HomePage() {
           <p className="eyebrow">{storefront.home.featuredEyebrow}</p>
           <h2 className="font-display mt-2 text-2xl">{storefront.home.featuredTitle}</h2>
         </Reveal>
-        <StaggerRoot className="grid gap-8 md:grid-cols-3">
+        <StaggerRoot className="grid gap-x-6 gap-y-10 md:grid-cols-3">
           {featured.map((product) => (
             <StaggerItem key={product.id}>
               <ProductTile product={product} />
@@ -89,7 +90,7 @@ export default async function HomePage() {
             All products
           </Link>
         </div>
-        <StaggerRoot className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerRoot className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {newest.map((product) => (
             <StaggerItem key={product.id}>
               <ProductTile product={product} />
@@ -123,6 +124,8 @@ export default async function HomePage() {
           ))}
         </StaggerRoot>
       </section>
+
+      <RecentlyViewed />
     </div>
   );
 }

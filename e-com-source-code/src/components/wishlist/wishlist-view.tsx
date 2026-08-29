@@ -43,7 +43,7 @@ export function WishlistView() {
   return (
     <motion.div
       layout={!reduceMotion}
-      className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
+      className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
     >
       {products.data?.map((product) => (
         <motion.div layout={!reduceMotion} key={product.id}>

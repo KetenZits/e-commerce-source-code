@@ -34,6 +34,15 @@ export const updateProfileSchema = z.object({
   name: z.string().trim().min(2).max(80),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  password: registerSchema.shape.password,
+});
+
+export const setPasswordSchema = z.object({
+  password: registerSchema.shape.password,
+});
+
 export const catalogQuerySchema = z.object({
   q: z.string().optional().default(""),
   brand: z.string().optional(),
@@ -182,6 +191,7 @@ export const storefrontSettingsSchema = z.object({
     title: z.string().trim().min(2).max(160),
     body: z.string().trim().min(2).max(600),
     imageUrl: z.string().trim().max(2000),
+    orbitImages: z.array(z.string().trim().min(1).max(2000)).max(8),
     primaryLabel: contentField,
     primaryHref: linkField,
     secondaryLabel: contentField,
@@ -218,6 +228,21 @@ export const storefrontSettingsSchema = z.object({
     digitalTitle: contentField,
     digitalBody: z.string().trim().min(2).max(600),
   }),
+  business: z.object({
+    legalName: z.string().trim().min(2).max(160),
+    contactEmail: z.string().trim().toLowerCase().email(),
+    phone: z.string().trim().min(6).max(32),
+    city: z.string().trim().min(2).max(80),
+    country: z.string().trim().min(2).max(80),
+    address: z.string().trim().max(500),
+    returnDays: z.number().int().min(0).max(90),
+    documentLanguage: z.enum(["en", "th"]),
+  }),
+});
+
+export const stockAlertSchema = z.object({
+  variantId: z.string().min(1),
+  email: z.string().trim().toLowerCase().email(),
 });
 
 export const digitalDeliverySchema = z.object({

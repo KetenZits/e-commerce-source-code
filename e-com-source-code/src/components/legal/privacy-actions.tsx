@@ -1,29 +1,27 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/trpc/client";
 
 export function PrivacyActions() {
-  const router = useRouter();
   const exportData = trpc.auth.requestDataExport.useMutation({
     onSuccess: (data) => {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "atelier-data-export.json";
+      link.download = "account-data-export.json";
       link.click();
       toast.message("Export downloaded");
     },
     onError: (error) => toast.error(error.message),
   });
   const remove = trpc.auth.deleteAccount.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.message("Account deleted");
-      router.push("/");
-      router.refresh();
+      await signOut({ callbackUrl: "/" });
     },
     onError: (error) => toast.error(error.message),
   });

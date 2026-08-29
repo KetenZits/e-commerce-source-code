@@ -75,7 +75,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
               No products match these filters. Try clearing a collection or brand.
             </p>
           ) : (
-            <StaggerRoot className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
+            <StaggerRoot className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
               {result.items.map((product, index) => (
                 <StaggerItem key={product.id}>
                   <ProductTile product={product} priority={index < 2} />

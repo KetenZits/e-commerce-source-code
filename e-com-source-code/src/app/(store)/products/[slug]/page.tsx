@@ -5,6 +5,7 @@ import { AddToCart } from "@/components/product/add-to-cart";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductMarquee } from "@/components/product/product-marquee";
 import { ReviewForm } from "@/components/product/review-form";
+import { RecentlyViewed, TrackRecentlyViewed } from "@/components/product/recently-viewed";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionDivider } from "@/components/section-divider";
 import { formatMoney } from "@/lib/money";
@@ -42,11 +43,25 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     categoryId: product.categoryId,
     excludeId: product.id,
   });
-  const inStock = product.variants.some((variant) => variant.stockQty > 0);
+  const inStock = product.variants.some(
+    (variant) => variant.stockQty - variant.reservedQty > 0,
+  );
   const minPrice = Math.min(...product.variants.map((variant) => variant.priceCents));
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-10">
+      <TrackRecentlyViewed
+        product={{
+          id: product.id,
+          slug: product.slug,
+          title: product.title,
+          brand: product.brand,
+          images: product.images,
+          minPriceCents: minPrice,
+          currency: product.currency,
+          inStock,
+        }}
+      />
       <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
         <Link href="/">Home</Link>
         <span>/</span>
@@ -121,6 +136,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </section>
         </>
       ) : null}
+      <RecentlyViewed excludeId={product.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

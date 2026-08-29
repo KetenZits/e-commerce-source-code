@@ -9,7 +9,7 @@ export default async function StorefrontSettingsPage() {
       <div>
         <h1 className="font-display text-2xl">Storefront</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Manage the store type, home banner, brand copy, and public page
+          Manage the store type, home banner, orbit photos, brand copy, and public page
           introductions. Changes are visible as soon as they are saved.
         </p>
       </div>

@@ -25,7 +25,7 @@ export async function uploadProductImage(
   originalName: string,
   body: Buffer,
   contentType: string,
-  area: "products" | "marketing" | "slips" = "products",
+  area: "products" | "marketing" | "slips" | "avatars" = "products",
 ) {
   const mime = assertImageBuffer(body, contentType);
   const filename = `${nanoid()}.${safeExt(originalName)}`;

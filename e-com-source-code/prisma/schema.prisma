@@ -183,6 +183,7 @@ model Product {
   variants ProductVariant[]
   reviews  Review[]
   wishlistItems WishlistItem[]
+  stockAlerts StockAlert[]
 
   @@index([status, createdAt])
   @@index([categoryId])
@@ -205,6 +206,7 @@ model ProductVariant {
   orderItems OrderItem[]
   inventoryMovements InventoryMovement[]
   digitalCodes DigitalCode[]
+  stockAlerts StockAlert[]
 
   @@index([productId])
   @@index([stockQty])
@@ -501,6 +503,22 @@ model DigitalCode {
 
   @@index([variantId, status])
   @@index([orderItemId])
+}
+
+model StockAlert {
+  id         String    @id @default(cuid())
+  email      String    @db.VarChar(191)
+  productId  String
+  variantId  String
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([email, variantId])
+  @@index([variantId, notifiedAt])
+  @@index([productId])
 }
 
 model AuditLog {

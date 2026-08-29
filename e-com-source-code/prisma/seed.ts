@@ -7,6 +7,7 @@ const db = new PrismaClient();
 
 async function main() {
   await db.digitalCode.deleteMany();
+  await db.$executeRaw`DELETE FROM \`StockAlert\``;
   await db.inventoryMovement.deleteMany();
   await db.paymentTransaction.deleteMany();
   await db.refund.deleteMany();
@@ -297,8 +298,9 @@ async function main() {
   });
 
   console.log("Seeded physical catalog");
-  console.log("Admin  admin@atelier.dev / admin1234");
+  console.log("Admin  admin@atelier.dev / admin1234  (change before production)");
   console.log("Buyer  buyer@atelier.dev / buyer1234");
+  console.log("Seed wipes existing orders, users, and catalog data.");
 }
 
 main()

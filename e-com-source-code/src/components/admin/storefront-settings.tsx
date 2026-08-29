@@ -30,6 +30,7 @@ export function StorefrontSettingsForm({
   });
   const mode = useWatch({ control: form.control, name: "storeMode" });
   const imageUrl = useWatch({ control: form.control, name: "hero.imageUrl" });
+  const orbitImages = useWatch({ control: form.control, name: "hero.orbitImages" }) ?? [];
   const save = trpc.admin.saveStorefrontSettings.useMutation({
     onSuccess: () => {
       toast.message("Storefront settings saved");
@@ -38,7 +39,7 @@ export function StorefrontSettingsForm({
     onError: (error) => toast.error(error.message),
   });
 
-  async function uploadBanner(file: File | undefined) {
+  async function uploadImage(file: File | undefined, onUrl: (url: string) => void) {
     if (!file) return;
     setUploading(true);
     try {
@@ -52,16 +53,39 @@ export function StorefrontSettingsForm({
       if (!response.ok || !result.url) {
         throw new Error(result.error ?? "Upload failed");
       }
-      form.setValue("hero.imageUrl", result.url, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-      toast.message("Banner uploaded");
+      onUrl(result.url);
+      toast.message("Image uploaded");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function uploadBanner(file: File | undefined) {
+    await uploadImage(file, (url) => {
+      form.setValue("hero.imageUrl", url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    });
+  }
+
+  function setOrbitImage(index: number, url: string) {
+    const next = [...orbitImages];
+    next[index] = url;
+    form.setValue("hero.orbitImages", next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function removeOrbitImage(index: number) {
+    form.setValue(
+      "hero.orbitImages",
+      orbitImages.filter((_, itemIndex) => itemIndex !== index),
+      { shouldDirty: true, shouldValidate: true },
+    );
   }
 
   return (
@@ -156,6 +180,57 @@ export function StorefrontSettingsForm({
         </div>
       </Section>
 
+      <Section
+        title="Hero orbit images"
+        description="These photos rotate on the home page. Upload or paste up to eight images. Leave empty to keep the default set."
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {orbitImages.map((src, index) => (
+            <div key={`${src}-${index}`} className="space-y-2 rounded-xl border border-border p-3">
+              <div className="relative overflow-hidden rounded-lg bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`Orbit image ${index + 1}`} className="aspect-square w-full object-cover" />
+              </div>
+              <Input
+                value={src}
+                onChange={(event) => setOrbitImage(index, event.target.value)}
+              />
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading}
+                  onChange={(event) =>
+                    void uploadImage(event.target.files?.[0], (url) => setOrbitImage(index, url))
+                  }
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeOrbitImage(index)}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {orbitImages.length < 8 ? (
+          <div className="mt-4">
+            <Input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(event) =>
+                void uploadImage(event.target.files?.[0], (url) =>
+                  form.setValue("hero.orbitImages", [...orbitImages, url], {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  }),
+                )
+              }
+            />
+            <p className="mt-2 text-xs text-muted-foreground">Add another orbit image</p>
+          </div>
+        ) : null}
+      </Section>
+
       <Section title="Home sections" description="Headings and the three information cards shown on the home page.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Featured eyebrow">
@@ -215,6 +290,41 @@ export function StorefrontSettingsForm({
               <Textarea rows={5} {...form.register("delivery.digitalBody")} />
             </Field>
           </div>
+        </div>
+      </Section>
+
+      <Section title="Business and legal" description="These fields fill the Terms, Privacy, Returns, and Contact pages. Replace the example values before launch.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Legal name">
+            <Input {...form.register("business.legalName")} />
+          </Field>
+          <Field label="Contact email">
+            <Input type="email" {...form.register("business.contactEmail")} />
+          </Field>
+          <Field label="Phone">
+            <Input {...form.register("business.phone")} />
+          </Field>
+          <Field label="City">
+            <Input {...form.register("business.city")} />
+          </Field>
+          <Field label="Country">
+            <Input {...form.register("business.country")} />
+          </Field>
+          <Field label="Return window (days)">
+            <Input type="number" {...form.register("business.returnDays", { valueAsNumber: true })} />
+          </Field>
+          <Field label="Document language" className="sm:col-span-2">
+            <select
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
+              {...form.register("business.documentLanguage")}
+            >
+              <option value="en">English</option>
+              <option value="th">Thai</option>
+            </select>
+          </Field>
+          <Field label="Address" className="sm:col-span-2">
+            <Textarea rows={3} {...form.register("business.address")} />
+          </Field>
         </div>
       </Section>
 

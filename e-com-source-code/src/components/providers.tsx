@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { createQueryClient, createTrpcClient, trpc } from "@/trpc/client";
 import { WishlistProvider } from "@/components/wishlist/wishlist-provider";
+import { CookieConsent } from "@/components/legal/cookie-consent";
+import { AnalyticsScripts } from "@/components/analytics/analytics-scripts";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createQueryClient);
@@ -19,6 +21,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <MotionConfig reducedMotion="user">
             <WishlistProvider>{children}</WishlistProvider>
           </MotionConfig>
+          <CookieConsent />
+          <AnalyticsScripts />
           <Toaster
             theme="light"
             position="bottom-right"

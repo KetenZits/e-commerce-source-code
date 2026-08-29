@@ -43,6 +43,8 @@ export const env = {
   TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID ?? "",
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
   RESEND_FROM: process.env.RESEND_FROM ?? "Atelier <noreply@localhost>",
+  NEXT_PUBLIC_PLAUSIBLE_DOMAIN: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? "",
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "",
 };
 
 export const envSchema = z.object({

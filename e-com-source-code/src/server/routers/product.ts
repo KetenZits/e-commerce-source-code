@@ -1,10 +1,12 @@
+import { TRPCError } from "@trpc/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
-import { catalogQuerySchema } from "@/server/schemas";
+import { catalogQuerySchema, stockAlertSchema } from "@/server/schemas";
 import { publicProcedure, router } from "@/server/trpc";
 import { searchProductIds } from "@/server/services/search";
 import { productImages } from "@/lib/product";
 import { availableQty } from "@/server/services/inventory";
+import { upsertStockAlert } from "@/server/services/stock-alert-store";
 
 export const productRouter = router({
   list: publicProcedure.input(catalogQuerySchema).query(async ({ ctx, input }) => {
@@ -182,5 +184,24 @@ export const productRouter = router({
       }),
     ]);
     return { categories, brands: brands.map((row) => row.brand) };
+  }),
+
+  createStockAlert: publicProcedure.input(stockAlertSchema).mutation(async ({ ctx, input }) => {
+    const variant = await ctx.db.productVariant.findUnique({
+      where: { id: input.variantId },
+      include: { product: { select: { id: true, status: true } } },
+    });
+    if (!variant || variant.product.status !== "PUBLISHED") {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
+    }
+    if (availableQty(variant.stockQty, variant.reservedQty) > 0) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This variant is already in stock." });
+    }
+    await upsertStockAlert(ctx.db, {
+      email: input.email,
+      variantId: variant.id,
+      productId: variant.product.id,
+    });
+    return { ok: true };
   }),
 });

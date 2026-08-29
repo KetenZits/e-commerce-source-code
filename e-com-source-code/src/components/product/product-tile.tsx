@@ -34,75 +34,89 @@ export function ProductTile({
   const reduceMotion = useReducedMotion();
   const primaryImage = product.images[0];
   const alternateImage = product.images[1];
+  const showAlternate = Boolean(alternateImage && hovered && !reduceMotion);
 
   return (
-    <TiltCard className={cn("h-full", className)} innerClassName="h-full">
-      <motion.article
-        className="premium-depth group relative h-full transform-3d overflow-hidden rounded-xl border border-border bg-card"
-        onHoverStart={() => setHovered(true)}
-        onHoverEnd={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
+    <TiltCard className={cn("h-full", className)} intensity={4}>
+      <article
+        className="group relative h-full"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-      <div className="relative aspect-4/5 transform-[translateZ(14px)] overflow-hidden bg-muted">
         <Link
           href={`/products/${product.slug}`}
-          aria-label={`View ${product.title} image`}
-          className="absolute inset-0 z-10"
-        />
-        {primaryImage ? (
-          <motion.div
-            className="absolute inset-0"
-            animate={{ opacity: alternateImage && hovered ? 0 : 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.35 }}
-          >
-            <Image
-              src={primaryImage}
-              alt={product.title}
-              fill
-              priority={priority}
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              className="object-cover"
-            />
-          </motion.div>
-        ) : null}
-        {alternateImage ? (
-          <motion.div
-            className="absolute inset-0"
-            initial={false}
-            animate={{ opacity: hovered ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.35 }}
-          >
-            <Image
-              src={alternateImage}
-              alt={`${product.title}, alternate view`}
-              fill
-              loading="lazy"
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              className="object-cover"
-            />
-          </motion.div>
-        ) : null}
+          className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <div className="product-tile-frame premium-depth relative aspect-4/5 overflow-hidden rounded-2xl bg-muted">
+            {primaryImage ? (
+              <>
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ opacity: showAlternate ? 0 : 1 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.4 }}
+                >
+                  <Image
+                    src={primaryImage}
+                    alt=""
+                    fill
+                    priority={priority}
+                    sizes="(min-width: 1280px) 20vw, (min-width: 640px) 40vw, 100vw"
+                    className="object-cover transition-transform duration-700 ease-(--motion-premium) group-hover:scale-[1.045]"
+                  />
+                </motion.div>
+                {alternateImage ? (
+                  <motion.div
+                    className="absolute inset-0"
+                    initial={false}
+                    animate={{ opacity: showAlternate ? 1 : 0 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.4 }}
+                  >
+                    <Image
+                      src={alternateImage}
+                      alt=""
+                      fill
+                      loading="lazy"
+                      sizes="(min-width: 1280px) 20vw, (min-width: 640px) 40vw, 100vw"
+                      className="object-cover transition-transform duration-700 ease-(--motion-premium) group-hover:scale-[1.045]"
+                    />
+                  </motion.div>
+                ) : null}
+              </>
+            ) : (
+              <div className="flex size-full items-center justify-center px-6 text-center">
+                <p className="eyebrow">No photograph</p>
+              </div>
+            )}
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-linear-to-t from-foreground/18 to-transparent" />
+            {!product.inStock ? (
+              <div className="absolute inset-0 z-10 bg-background/35">
+                <span className="absolute bottom-3 left-3 rounded-full bg-card/90 px-2.5 py-1 text-[10px] tracking-[0.16em] text-muted-foreground uppercase shadow-sm backdrop-blur-sm">
+                  Out of stock
+                </span>
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-3.5 space-y-1.5 px-0.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="eyebrow truncate">{product.brand}</p>
+              {product.category?.name ? (
+                <p className="truncate text-[11px] text-muted-foreground">{product.category.name}</p>
+              ) : null}
+            </div>
+            <h3 className="font-display line-clamp-2 text-[1.15rem] leading-snug transition-colors duration-300 group-hover:text-primary">
+              {product.title}
+            </h3>
+            <p className="font-tabular text-sm text-brass">
+              {formatMoney(product.minPriceCents, product.currency)}
+            </p>
+          </div>
+          <span className="sr-only">View {product.title}</span>
+        </Link>
         <WishlistButton
           productId={product.id}
-          className="absolute top-3 right-3 z-20"
+          className="absolute top-3 right-3 z-20 border-white/60 bg-white/80 shadow-sm backdrop-blur-md"
         />
-        {!product.inStock ? (
-          <span className="absolute top-3 left-3 z-20 rounded-md border border-destructive/30 bg-card px-2 py-1 text-[10px] tracking-[0.14em] text-destructive uppercase">
-            Out of stock
-          </span>
-        ) : null}
-      </div>
-      <div className="transform-[translateZ(9px)] space-y-1 px-4 py-4">
-        <p className="eyebrow">{product.brand}</p>
-        <h3 className="font-display text-lg leading-snug">
-          <Link href={`/products/${product.slug}`}>{product.title}</Link>
-        </h3>
-        <p className="font-tabular text-right text-sm text-brass">
-          {formatMoney(product.minPriceCents, product.currency)}
-        </p>
-      </div>
-      </motion.article>
+      </article>
     </TiltCard>
   );
 }

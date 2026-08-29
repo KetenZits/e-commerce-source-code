@@ -1,9 +1,6 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMoney } from "@/lib/money";
-import { authOptions } from "@/server/auth";
 import { serverCaller } from "@/trpc/server";
 
 const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
@@ -17,12 +14,10 @@ const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
 };
 
 export default async function OrdersPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/auth/signin?callbackUrl=/dashboard/orders");
   const orders = await (await serverCaller()).order.mine();
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-12">
+    <div className="space-y-6">
       <h1 className="font-display text-3xl">Orders</h1>
       {orders.length === 0 ? (
         <p className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
