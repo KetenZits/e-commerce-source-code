@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function NavSearch({ onSubmit }: { onSubmit?: () => void }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
 
   return (
@@ -23,8 +25,8 @@ export function NavSearch({ onSubmit }: { onSubmit?: () => void }) {
       <Input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search"
-        aria-label="Search catalog"
+        placeholder={t("nav.search")}
+        aria-label={t("search.placeholder")}
         className="h-8 w-40 pl-8 lg:w-52"
       />
     </form>

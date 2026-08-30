@@ -16,6 +16,7 @@ import { SectionDivider } from "@/components/section-divider";
 import { THAI_PROVINCES } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
 import type { StoreMode } from "@/lib/storefront-config";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { addressSchema } from "@/server/schemas";
 import { trpc } from "@/trpc/client";
 import type { z } from "zod";
@@ -24,6 +25,7 @@ type AddressForm = z.infer<typeof addressSchema>;
 
 export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
   const router = useRouter();
+  const { t } = useI18n();
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const [addressId, setAddressId] = useState<string | null>(null);
@@ -84,12 +86,12 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="font-display text-xl">1. Cart review</h2>
+        <h2 className="font-display text-xl">{t("checkout.cartReview")}</h2>
         {!cart.data || cart.data.lines.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Your cart is empty.{" "}
+            {t("checkout.empty")}{" "}
             <Link href="/catalog" className="text-primary">
-              Continue shopping
+              {t("checkout.continue")}
             </Link>
             .
           </p>
@@ -101,31 +103,31 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
                   {line.product.title}
                   <span className="block text-muted-foreground">
                     {line.attributeLabel} × {line.quantity}
-                    {line.fulfillmentType === "DIGITAL" ? " · Digital" : ""}
-                    {line.stockQty < 1 ? " · Out of stock" : ""}
+                    {line.fulfillmentType === "DIGITAL" ? ` · ${t("checkout.digital")}` : ""}
+                    {line.stockQty < 1 ? ` · ${t("checkout.outOfStock")}` : ""}
                   </span>
                 </span>
                 <span className="font-tabular text-right">{formatMoney(line.lineTotalCents)}</span>
               </div>
             ))}
             <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
+              <span>{t("checkout.subtotal")}</span>
               <span className="font-tabular">{formatMoney(cart.data.subtotalCents)}</span>
             </div>
             {totals.data?.discountCents ? (
               <div className="flex justify-between text-sm text-primary">
-                <span>Discount</span>
+                <span>{t("checkout.discount")}</span>
                 <span className="font-tabular">-{formatMoney(totals.data.discountCents)}</span>
               </div>
             ) : null}
             {totals.data?.taxCents ? (
               <div className="flex justify-between text-sm">
-                <span>VAT</span>
+                <span>{t("checkout.vat")}</span>
                 <span className="font-tabular">{formatMoney(totals.data.taxCents)}</span>
               </div>
             ) : null}
             <Link href="/cart" className="text-sm text-primary">
-              Edit cart
+              {t("checkout.editCart")}
             </Link>
           </div>
         )}
@@ -135,19 +137,19 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
         <>
           <SectionDivider />
           <section className="space-y-3">
-            <h2 className="font-display text-xl">Guest details</h2>
+            <h2 className="font-display text-xl">{t("checkout.guestDetails")}</h2>
             <p className="text-sm text-muted-foreground">
-              Checkout without an account, or{" "}
+              {t("checkout.guestHint")}{" "}
               <Link href="/auth/signin?callbackUrl=/checkout" className="text-primary">
-                sign in
+                {t("checkout.signIn")}
               </Link>
               .
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Name">
+              <Field label={t("checkout.name")}>
                 <Input value={guestName} onChange={(event) => setGuestName(event.target.value)} />
               </Field>
-              <Field label="Email">
+              <Field label={t("checkout.email")}>
                 <Input type="email" value={guestEmail} onChange={(event) => setGuestEmail(event.target.value)} />
               </Field>
             </div>
@@ -159,7 +161,7 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
         <>
           <SectionDivider />
           <section className="space-y-4">
-            <h2 className="font-display text-xl">2. Shipping address</h2>
+            <h2 className="font-display text-xl">{t("checkout.shippingAddress")}</h2>
             <div className="space-y-2">
               {addresses.data?.map((address) => (
                 <label
@@ -179,23 +181,23 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
               className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2"
               onSubmit={form.handleSubmit((values) => signedIn && createAddress.mutate(values))}
             >
-              <p className="eyebrow sm:col-span-2">{signedIn ? "New address" : "Delivery address"}</p>
-              <Field label="Recipient">
+              <p className="eyebrow sm:col-span-2">{signedIn ? t("checkout.newAddress") : t("checkout.deliveryAddress")}</p>
+              <Field label={t("checkout.recipient")}>
                 <Input {...form.register("recipientName")} />
               </Field>
-              <Field label="Phone">
+              <Field label={t("checkout.phone")}>
                 <Input {...form.register("phone")} />
               </Field>
-              <Field label="Address" className="sm:col-span-2">
+              <Field label={t("checkout.address")} className="sm:col-span-2">
                 <Input {...form.register("addressLine1")} />
               </Field>
-              <Field label="Subdistrict">
+              <Field label={t("checkout.subdistrict")}>
                 <Input {...form.register("subdistrict")} />
               </Field>
-              <Field label="District">
+              <Field label={t("checkout.district")}>
                 <Input {...form.register("district")} />
               </Field>
-              <Field label="Province">
+              <Field label={t("checkout.province")}>
                 <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm" {...form.register("province")}>
                   {THAI_PROVINCES.map((province) => (
                     <option key={province} value={province}>
@@ -204,13 +206,13 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
                   ))}
                 </select>
               </Field>
-              <Field label="Postal code">
+              <Field label={t("checkout.postalCode")}>
                 <Input {...form.register("postalCode")} />
               </Field>
               {signedIn ? (
                 <div className="sm:col-span-2">
                   <Button type="submit" variant="outline" disabled={createAddress.isPending}>
-                    Save address
+                    {t("checkout.saveAddress")}
                   </Button>
                 </div>
               ) : null}
@@ -219,15 +221,15 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
 
           <SectionDivider />
           <section className="space-y-3">
-            <h2 className="font-display text-xl">3. Shipping method</h2>
+            <h2 className="font-display text-xl">{t("checkout.shippingMethod")}</h2>
             {quote.data ? (
               <div className="rounded-xl border border-primary bg-card p-4 text-sm">
                 <p>{quote.data.zone.name}</p>
                 <p className="font-tabular mt-1 text-brass">{formatMoney(quote.data.feeCents)}</p>
-                <p className="mt-1 text-muted-foreground">Estimated delivery {quote.data.estimatedDelivery}</p>
+                <p className="mt-1 text-muted-foreground">{t("checkout.eta")} {quote.data.estimatedDelivery}</p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Select an address to see the shipping fee.</p>
+              <p className="text-sm text-muted-foreground">{t("checkout.selectAddress")}</p>
             )}
           </section>
         </>
@@ -235,10 +237,10 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
         <>
           <SectionDivider />
           <section className="rounded-xl border border-primary/40 bg-card p-5">
-            <p className="eyebrow">Digital delivery</p>
-            <h2 className="font-display mt-2 text-xl">No shipping address required</h2>
+            <p className="eyebrow">{t("checkout.digitalDelivery")}</p>
+            <h2 className="font-display mt-2 text-xl">{t("checkout.noShipping")}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              After payment is verified, digital access details appear on this order.
+              {t("checkout.digitalHint")}
             </p>
           </section>
         </>
@@ -246,9 +248,9 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
 
       <SectionDivider />
       <section className="space-y-3">
-        <h2 className="font-display text-xl">Promo code</h2>
+        <h2 className="font-display text-xl">{t("checkout.promo")}</h2>
         <Input
-          placeholder="Optional code"
+          placeholder={t("checkout.promoPlaceholder")}
           value={promo}
           onChange={(event) => setPromo(event.target.value.toUpperCase())}
         />
@@ -256,11 +258,11 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
 
       <SectionDivider />
       <section className="space-y-3">
-        <h2 className="font-display text-xl">{needsShipping ? "4" : "2"}. Payment</h2>
+        <h2 className="font-display text-xl">{needsShipping ? "4" : "2"}. {t("checkout.payment")}</h2>
         <p className="text-sm text-muted-foreground">
-          You will receive a PromptPay QR on the next screen.
+          {t("checkout.qrHint")}
         </p>
-        {outOfStock ? <p className="text-sm text-destructive">Remove out-of-stock items before paying.</p> : null}
+        {outOfStock ? <p className="text-sm text-destructive">{t("checkout.removeOos")}</p> : null}
         <Button
           disabled={
             (needsShipping && signedIn && (!addressId || !quote.data)) ||
@@ -283,7 +285,7 @@ export function CheckoutFlow({ storeMode }: { storeMode: StoreMode }) {
             });
           }}
         >
-          {place.isPending ? "Placing order" : "Continue to PromptPay"}
+          {place.isPending ? t("checkout.placing") : t("checkout.continuePay")}
         </Button>
       </section>
     </div>

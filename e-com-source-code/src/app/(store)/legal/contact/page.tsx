@@ -1,26 +1,27 @@
 import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function ContactPage() {
-  const store = await getStorefrontConfig();
+  const [store, { t }] = await Promise.all([getStorefrontConfig(), getI18n()]);
   const { business, siteName } = store;
   const name = business.legalName || siteName;
 
   return (
-    <LegalPage title="Contact">
+    <LegalPage title={t("legal.contact")}>
       <p>
         {name} · {business.city}, {business.country}
       </p>
       <p>{business.address}</p>
       <p>
-        Email {business.contactEmail}
+        {t("legal.email")} {business.contactEmail}
         {business.phone ? ` · ${business.phone}` : ""}.
       </p>
       <p>
-        Account data export and deletion are on the{" "}
+        {t("legal.contactPrivacy")}{" "}
         <Link href="/legal/privacy" className="text-primary">
-          privacy page
+          {t("legal.privacyPage")}
         </Link>
         .
       </p>

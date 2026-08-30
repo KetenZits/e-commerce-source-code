@@ -17,17 +17,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { SITE_NAME } from "@/lib/constants";
 import { canAccessAdmin } from "@/lib/roles";
 import type { StoreMode } from "@/lib/storefront-config";
-
-const BASE_TABS = [
-  { href: "/catalog", label: "Shop" },
-  { href: "/categories", label: "Collections" },
-  { href: "/#featured", label: "Featured" },
-  { href: "/wishlist", label: "Wishlist" },
-  { href: "/shipping", label: "Shipping" },
-];
 
 export function SiteHeader({
   siteName = SITE_NAME,
@@ -39,6 +33,7 @@ export function SiteHeader({
   navImages?: string[];
 }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const { data: session, status } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [closeVersion, setCloseVersion] = useState(0);
@@ -46,14 +41,19 @@ export function SiteHeader({
     () => setCloseVersion((version) => version + 1),
     [],
   );
-  const tabs = BASE_TABS.map((tab) =>
-    tab.href === "/shipping"
-      ? { ...tab, label: storeMode === "digital" ? "Digital delivery" : "Shipping" }
-      : tab,
-  );
+  const tabs = [
+    { href: "/catalog", label: t("nav.shop") },
+    { href: "/categories", label: t("nav.collections") },
+    { href: "/#featured", label: t("nav.featured") },
+    { href: "/wishlist", label: t("nav.wishlist") },
+    {
+      href: "/shipping",
+      label: storeMode === "digital" ? t("nav.digitalDelivery") : t("nav.shipping"),
+    },
+  ];
   const menuItems = tabs.map((tab) => ({
     label: tab.label,
-    ariaLabel: `Go to ${tab.label}`,
+    ariaLabel: `${t("nav.goTo")} ${tab.label}`,
     link: tab.href,
   }));
 
@@ -82,10 +82,13 @@ export function SiteHeader({
           }
           panelFooter={
             <div className="space-y-4">
-              <NavSearch onSubmit={closeMobileMenu} />
+              <div className="flex items-center justify-between gap-3">
+                <NavSearch onSubmit={closeMobileMenu} />
+                <LanguageSwitcher />
+              </div>
               {status === "loading" ? (
                 <p className="text-xs text-muted-foreground">
-                  Loading account…
+                  {t("nav.loading")}
                 </p>
               ) : session?.user ? (
                 <div className="grid grid-cols-2 gap-2">
@@ -95,7 +98,7 @@ export function SiteHeader({
                     render={<Link href="/dashboard" />}
                     onClick={closeMobileMenu}
                   >
-                    Account
+                    {t("nav.account")}
                   </Button>
                   <Button
                     variant="outline"
@@ -103,7 +106,7 @@ export function SiteHeader({
                     render={<Link href="/dashboard/orders" />}
                     onClick={closeMobileMenu}
                   >
-                    Orders
+                    {t("nav.orders")}
                   </Button>
                   {canAccessAdmin(session.user.role) ? (
                     <Button
@@ -112,7 +115,7 @@ export function SiteHeader({
                       render={<Link href="/admin" />}
                       onClick={closeMobileMenu}
                     >
-                      Admin
+                      {t("nav.admin")}
                     </Button>
                   ) : null}
                   <Button
@@ -123,7 +126,7 @@ export function SiteHeader({
                       void signOut({ callbackUrl: "/" });
                     }}
                   >
-                    Sign out
+                    {t("nav.signOut")}
                   </Button>
                 </div>
               ) : (
@@ -133,7 +136,7 @@ export function SiteHeader({
                   render={<Link href="/auth/signin" />}
                   onClick={closeMobileMenu}
                 >
-                  Sign in
+                  {t("nav.signIn")}
                 </Button>
               )}
             </div>
@@ -169,6 +172,7 @@ export function SiteHeader({
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <NavSearch />
+          <LanguageSwitcher />
         </div>
         <CartButton />
         {status === "loading" ? (
@@ -194,26 +198,26 @@ export function SiteHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard" />}>
-                Profile
+                {t("nav.profile")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/orders" />}>
-                Orders
+                {t("nav.orders")}
               </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link href="/dashboard/addresses" />}>
-                Addresses
+                {t("nav.addresses")}
               </DropdownMenuItem>
               {canAccessAdmin(session.user.role) ? (
                 <DropdownMenuItem nativeButton={false} render={<Link href="/admin" />}>
-                  Admin
+                  {t("nav.admin")}
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>Sign out</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>{t("nav.signOut")}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/auth/signin" />}>
-            Sign in
+            {t("nav.signIn")}
           </Button>
         )}
       </div>

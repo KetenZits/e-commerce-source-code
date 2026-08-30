@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { readConsent, writeConsent } from "@/lib/consent";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function CookieConsent() {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -17,9 +19,9 @@ export function CookieConsent() {
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 p-4 shadow-lg backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-6 text-muted-foreground">
-          We use a cart cookie and, if you allow it, analytics. See{" "}
+          {t("cookie.body")}{" "}
           <Link href="/legal/privacy" className="text-foreground underline">
-            Privacy
+            {t("cookie.privacy")}
           </Link>
           .
         </p>
@@ -32,7 +34,7 @@ export function CookieConsent() {
               setVisible(false);
             }}
           >
-            Necessary only
+            {t("cookie.essential")}
           </button>
           <button
             type="button"
@@ -42,7 +44,7 @@ export function CookieConsent() {
               setVisible(false);
             }}
           >
-            Accept analytics
+            {t("cookie.accept")}
           </button>
         </div>
       </div>

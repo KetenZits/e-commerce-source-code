@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatAttributes, asAttributes } from "@/lib/product";
 import { StockAlertForm } from "@/components/product/stock-alert-form";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { trpc } from "@/trpc/client";
 
 type Variant = {
@@ -21,6 +22,7 @@ type Variant = {
 
 export function AddToCart({ variants }: { variants: Variant[] }) {
   const router = useRouter();
+  const { t } = useI18n();
   const utils = trpc.useUtils();
   const reduceMotion = useReducedMotion();
   const [added, setAdded] = useState(false);
@@ -29,7 +31,7 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
   const add = trpc.cart.add.useMutation({
     onSuccess: async () => {
       setAdded(true);
-      toast.message("Added to cart");
+      toast.message(t("addToCart.added"));
       await utils.cart.get.invalidate();
       router.refresh();
       window.setTimeout(() => setAdded(false), 1200);
@@ -74,7 +76,7 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
           disabled={out || add.isPending}
           onClick={() => add.mutate({ productVariantId: selected.id, quantity: 1 })}
         >
-          <span>{out ? "Out of stock" : add.isPending ? "Adding" : added ? "Added" : "Add to cart"}</span>
+          <span>{out ? t("product.outOfStock") : add.isPending ? t("addToCart.adding") : added ? t("addToCart.addedShort") : t("addToCart.add")}</span>
           <motion.span
             animate={added && !reduceMotion ? { scale: [1, 1.3, 1] } : { scale: 1 }}
             className="inline-flex size-7 items-center justify-center rounded-full border border-primary-foreground/30"
@@ -85,7 +87,7 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
       </motion.div>
       <p className="font-tabular text-xs text-muted-foreground">
         {asAttributes(selected.attributes).color ? `SKU ${selected.sku}` : selected.sku}
-        {out ? "" : ` · ${available} in stock`}
+        {out ? "" : ` · ${available} ${t("addToCart.inStock")}`}
       </p>
       {out ? <StockAlertForm variantId={selected.id} /> : null}
     </div>

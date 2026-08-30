@@ -7,11 +7,13 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SectionDivider } from "@/components/section-divider";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { formatMoney } from "@/lib/money";
 import type { StoreMode } from "@/lib/storefront-config";
 import { trpc } from "@/trpc/client";
 
 export function CartView({ storeMode }: { storeMode: StoreMode }) {
+  const { t } = useI18n();
   const utils = trpc.useUtils();
   const reduceMotion = useReducedMotion();
   const cart = trpc.cart.get.useQuery();
@@ -63,12 +65,12 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
         className="rounded-xl border border-border bg-card px-6 py-16 text-center"
       >
         <ShoppingBag className="mx-auto size-8 text-muted-foreground" />
-        <h2 className="font-display mt-4 text-2xl">Your bag is waiting.</h2>
+        <h2 className="font-display mt-4 text-2xl">{t("cart.waiting")}</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-          Add a considered piece from the catalog and it will appear here.
+          {t("cart.waitingHint")}
         </p>
         <Button className="mt-6" nativeButton={false} render={<Link href="/catalog" />}>
-          Continue shopping
+          {t("cart.continue")}
         </Button>
       </motion.div>
     );
@@ -113,7 +115,7 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Decrease quantity"
+                      aria-label={t("cart.decrease")}
                       disabled={update.isPending}
                       onClick={() =>
                         update.mutate({ id: line.id, quantity: Math.max(0, line.quantity - 1) })
@@ -126,7 +128,7 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Increase quantity"
+                      aria-label={t("cart.increase")}
                       disabled={update.isPending || line.quantity >= line.stockQty}
                       onClick={() =>
                         update.mutate({ id: line.id, quantity: line.quantity + 1 })
@@ -141,7 +143,7 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
                     onClick={() => update.mutate({ id: line.id, quantity: 0 })}
                   >
                     <Trash2 className="size-3.5" />
-                    Remove
+                    {t("cart.remove")}
                   </button>
                 </div>
               </div>
@@ -153,38 +155,38 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
         </AnimatePresence>
       </div>
       <aside className="h-fit rounded-xl border border-border bg-card p-5 lg:sticky lg:top-24">
-        <p className="eyebrow mb-3">Summary</p>
+        <p className="eyebrow mb-3">{t("cart.summary")}</p>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <span>Subtotal</span>
+            <span>{t("cart.subtotal")}</span>
             <span className="font-tabular">{formatMoney(cart.data.subtotalCents)}</span>
           </div>
           <div className="flex justify-between text-muted-foreground">
-            <span>{storeMode === "digital" ? "Digital delivery" : "Shipping"}</span>
+            <span>{storeMode === "digital" ? t("product.digitalDelivery") : t("nav.shipping")}</span>
             <span>
-              {storeMode === "digital" ? "No delivery fee" : "Calculated at checkout"}
+              {storeMode === "digital" ? t("cart.noDeliveryFee") : t("cart.calculated")}
             </span>
           </div>
           <div className="flex justify-between text-muted-foreground">
-            <span>Discount</span>
+            <span>{t("checkout.discount")}</span>
             <span className="font-tabular">{formatMoney(0)}</span>
           </div>
         </div>
         <SectionDivider className="my-4" />
         <div className="mb-5 flex justify-between">
-          <span>Total</span>
+          <span>{t("cart.total")}</span>
           <span className="font-tabular text-brass">{formatMoney(cart.data.subtotalCents)}</span>
         </div>
         {cart.data.lines.some((line) => line.stockQty < 1) ? (
-          <p className="mb-3 text-sm text-destructive">Remove out-of-stock items before checkout.</p>
+          <p className="mb-3 text-sm text-destructive">{t("cart.removeOos")}</p>
         ) : null}
         {cart.data.lines.some((line) => line.stockQty < 1) ? (
           <Button className="w-full" disabled>
-            Checkout
+            {t("cart.checkout")}
           </Button>
         ) : (
           <Button className="w-full" nativeButton={false} render={<Link href="/checkout" />}>
-            Checkout
+            {t("cart.checkout")}
           </Button>
         )}
       </aside>

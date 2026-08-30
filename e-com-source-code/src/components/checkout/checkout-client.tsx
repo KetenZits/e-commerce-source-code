@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { formatMoney } from "@/lib/money";
 import { formatAttributes } from "@/lib/product";
 import { trpc } from "@/trpc/client";
@@ -19,6 +20,7 @@ export function PaymentClient({
   guestToken?: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
   const [slipUrl, setSlipUrl] = useState<string | undefined>();
   const [uploading, setUploading] = useState(false);
@@ -30,7 +32,7 @@ export function PaymentClient({
   const transfer = trpc.order.markTransferred.useMutation({
     onSuccess: () => {
       setPhase("verifying");
-      toast.message("Verifying slip");
+      toast.message(t("checkout.verifying"));
     },
     onError: (error) => toast.error(error.message),
   });
@@ -64,17 +66,17 @@ export function PaymentClient({
       if (guestToken) data.set("guestToken", guestToken);
       const res = await fetch("/api/checkout/slip", { method: "POST", body: data });
       const json = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !json.url) throw new Error(json.error ?? "Upload failed");
+      if (!res.ok || !json.url) throw new Error(json.error ?? t("checkout.uploadFailed"));
       setSlipUrl(json.url);
-      toast.message("Slip uploaded");
+      toast.message(t("checkout.slipUploaded"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      toast.error(error instanceof Error ? error.message : t("checkout.uploadFailed"));
     } finally {
       setUploading(false);
     }
   }
 
-  if (!order.data) return <p className="text-sm text-muted-foreground">Loading payment…</p>;
+  if (!order.data) return <p className="text-sm text-muted-foreground">{t("checkout.loadingPayment")}</p>;
 
   const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
   const seconds = String(remaining % 60).padStart(2, "0");
@@ -101,24 +103,24 @@ export function PaymentClient({
         ))}
         {order.data.discountCents ? (
           <div className="mt-2 flex justify-between text-sm text-primary">
-            <span>Discount</span>
+            <span>{t("checkout.discount")}</span>
             <span className="font-tabular">-{formatMoney(order.data.discountCents)}</span>
           </div>
         ) : null}
         {order.data.taxCents ? (
           <div className="mt-2 flex justify-between text-sm">
-            <span>VAT</span>
+            <span>{t("checkout.vat")}</span>
             <span className="font-tabular">{formatMoney(order.data.taxCents)}</span>
           </div>
         ) : null}
         <div className="mt-3 flex justify-between text-sm">
           <span>
-            {order.data.fulfillmentType === "DIGITAL" ? "Digital delivery" : "Shipping"}
+            {order.data.fulfillmentType === "DIGITAL" ? t("checkout.digitalDelivery") : t("nav.shipping")}
           </span>
           <span className="font-tabular">{formatMoney(order.data.shippingFeeCents)}</span>
         </div>
         <div className="mt-2 flex justify-between font-medium">
-          <span>Total</span>
+          <span>{t("checkout.total")}</span>
           <span className="font-tabular text-brass">{formatMoney(order.data.totalCents)}</span>
         </div>
       </div>
@@ -128,7 +130,7 @@ export function PaymentClient({
           tone={displayPhase === "confirmed" ? "forest" : displayPhase === "verifying" ? "brass" : "muted"}
           pulse={displayPhase === "verifying"}
         >
-          {displayPhase === "confirmed" ? "payment confirmed" : displayPhase === "verifying" ? "verifying slip" : "waiting for payment"}
+          {displayPhase === "confirmed" ? t("checkout.confirmedChip") : displayPhase === "verifying" ? t("checkout.verifyingChip") : t("checkout.waitingPay")}
         </StatusChip>
         <p className="font-tabular text-xs text-muted-foreground">
           {order.data.promptpayRef} · {minutes}:{seconds}
@@ -143,10 +145,10 @@ export function PaymentClient({
           <p className="font-tabular text-xs text-muted-foreground">{order.data.payment.promptpayId}</p>
           {order.data.payment.paymentMode === "demo" ? (
             <p className="text-center text-xs text-muted-foreground">
-              Demo mode: no real transfer is required. Press I&apos;ve transferred to confirm the order.
+              {t("checkout.demoHint")}
             </p>
           ) : (
-            <p className="text-center text-xs text-muted-foreground">Scan with a Thai bank app, then upload the slip and confirm below.</p>
+            <p className="text-center text-xs text-muted-foreground">{t("checkout.scanHint")}</p>
           )}
         </div>
       ) : null}
@@ -159,17 +161,17 @@ export function PaymentClient({
             disabled={uploading}
             onChange={(event) => uploadSlip(event.target.files?.[0])}
           />
-          {slipUrl ? <p className="text-xs text-primary">Slip attached</p> : null}
+          {slipUrl ? <p className="text-xs text-primary">{t("checkout.slipAttached")}</p> : null}
           <Button
             className="w-full"
             disabled={transfer.isPending || remaining === 0 || uploading}
             onClick={() => transfer.mutate({ orderId, guestToken, slipImageUrl: slipUrl })}
           >
-            I&apos;ve transferred
+            {t("checkout.markPaid")}
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-primary">Payment confirmed. Opening your order…</p>
+        <p className="text-sm text-primary">{t("checkout.openingOrder")}</p>
       )}
     </div>
   );

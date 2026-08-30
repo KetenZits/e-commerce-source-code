@@ -13,6 +13,7 @@
 - Reviews, recently viewed, back-in-stock waitlist
 - SEO: sitemap, robots, Open Graph, Product JSON-LD
 - Cookie banner and optional Plausible / Google Analytics (after consent)
+- Thai / English storefront language switcher (cookie + html lang; catalog CMS copy stays as entered)
 - Terms, privacy, returns, and contact pages driven by Storefront → Business
 
 **Admin**
@@ -37,7 +38,7 @@
 Do not advertise these as if they ship in the zip:
 
 - Stripe, PayPal, credit cards, or non-Thai payment rails
-- Multi-currency or a full Thai/English translated UI
+- Multi-currency or translated catalog/CMS copy (product titles stay as you type them)
 - Carrier APIs, shipping labels, or pickup booking
 - Subscriptions, bundles, gift cards, loyalty, referrals
 - Product compare, preorders, abandoned-cart email campaigns

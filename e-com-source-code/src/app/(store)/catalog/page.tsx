@@ -6,6 +6,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
 import { SectionDivider } from "@/components/section-divider";
 import { ShippingInfo } from "@/components/shipping/shipping-info";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { catalogQuerySchema } from "@/server/schemas";
 import { serverCaller } from "@/trpc/server";
@@ -32,10 +33,11 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
     page: raw.page ? Number(raw.page) : 1,
   });
   const caller = await serverCaller();
-  const [result, meta, storefront] = await Promise.all([
+  const [result, meta, storefront, { t }] = await Promise.all([
     caller.product.list(parsed),
     caller.product.filters(),
     getStorefrontConfig(),
+    getI18n(),
   ]);
   const collection = meta.categories.find((category) => category.slug === parsed.category);
   const query = new URLSearchParams();
@@ -49,12 +51,12 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   return (
     <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
       <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">Home</Link>
+        <Link href="/" className="hover:text-foreground">{t("catalog.home")}</Link>
         <span>/</span>
-        <span>{collection?.name ?? "Shop"}</span>
+        <span>{collection?.name ?? t("nav.shop")}</span>
       </nav>
       <Reveal className="max-w-2xl space-y-4 py-4">
-        <p className="eyebrow">{collection ? "Collection" : storefront.catalog.eyebrow}</p>
+        <p className="eyebrow">{collection ? t("catalog.collection") : storefront.catalog.eyebrow}</p>
         <h1 className="font-display text-4xl">
           {collection?.name ?? storefront.catalog.title}
         </h1>
@@ -65,14 +67,14 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <Suspense fallback={<div className="h-28 rounded-xl border border-border bg-card" />}>
         <CatalogControls categories={meta.categories} brands={meta.brands}>
           <div className="mb-5 flex items-center justify-between text-sm text-muted-foreground">
-            <span>{result.total} products</span>
+            <span>{result.total} {t("catalog.products")}</span>
             {collection ? (
-              <Link href="/catalog" className="text-primary">View all</Link>
+              <Link href="/catalog" className="text-primary">{t("catalog.viewAll")}</Link>
             ) : null}
           </div>
           {result.items.length === 0 ? (
             <p className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
-              No products match these filters. Try clearing a collection or brand.
+              {t("catalog.empty")}
             </p>
           ) : (
             <StaggerRoot className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
@@ -106,12 +108,12 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <section className="space-y-6">
         <div>
           <p className="eyebrow">
-            {storefront.storeMode === "digital" ? "Digital delivery" : "Shipping"}
+            {storefront.storeMode === "digital" ? t("nav.digitalDelivery") : t("nav.shipping")}
           </p>
           <h2 className="font-display mt-2 text-2xl">
             {storefront.storeMode === "digital"
               ? storefront.delivery.digitalTitle
-              : "Before your parcel leaves the studio"}
+              : t("catalog.beforeParcel")}
           </h2>
         </div>
         {storefront.storeMode === "digital" ? (

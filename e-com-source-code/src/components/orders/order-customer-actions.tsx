@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { trpc } from "@/trpc/client";
 
 export function OrderCustomerActions({
@@ -17,9 +18,10 @@ export function OrderCustomerActions({
   invoiceNumber?: string | null;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const cancel = trpc.order.cancelPending.useMutation({
     onSuccess: () => {
-      toast.message("Order cancelled");
+      toast.message(t("orders.cancelled"));
       router.refresh();
     },
     onError: (error) => toast.error(error.message),
@@ -35,7 +37,7 @@ export function OrderCustomerActions({
           }
           disabled={cancel.isPending}
         >
-          Cancel unpaid order
+          {t("orders.cancelUnpaid")}
         </Button>
       ) : null}
       {invoiceNumber && ["PAID", "PACKED", "SHIPPED", "DELIVERED"].includes(status) ? (
@@ -43,7 +45,7 @@ export function OrderCustomerActions({
           href={`/orders/${orderId}/invoice${guestToken ? `?g=${guestToken}` : ""}`}
           className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-sm"
         >
-          View invoice
+          {t("orders.viewInvoice")}
         </a>
       ) : null}
     </div>

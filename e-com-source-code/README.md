@@ -69,6 +69,8 @@ Coupon after seed: `WELCOME10`. Change these passwords before production.
 
 Admin is at `/admin`. Storefront CMS is at `/admin/storefront`.
 
+Shoppers switch Thai / English with **ไทย | EN** in the header. The choice is stored in a `locale` cookie. Product titles and CMS copy stay as you typed them.
+
 ### Background worker
 
 Payment expiry and notification retries use BullMQ when `REDIS_URL` is set:
@@ -82,7 +84,7 @@ Without Redis the app still runs; jobs fall back to in-process handling where im
 ## Rebrand before launch
 
 1. Admin → Storefront: store name, tagline, hero, orbit images, delivery copy
-2. Admin → Storefront → Business: legal name, email, phone, address, return window, document language
+2. Admin → Storefront → Business: legal name, email, phone, address, return window, default Thai/English language
 3. Admin → Payments: PromptPay ID and account name
 4. Replace demo products and picsum orbit images with your photos
 5. Replace the placeholder legal pages by saving business details (the pages read those fields)

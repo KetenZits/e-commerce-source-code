@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function CatalogControls({
   categories,
@@ -16,6 +17,7 @@ export function CatalogControls({
 }) {
   const params = useSearchParams();
   const router = useRouter();
+  const { t } = useI18n();
 
   function setParam(key: string, value: string | null) {
     const next = new URLSearchParams(params.toString());
@@ -47,19 +49,19 @@ export function CatalogControls({
           <Input
             key={params.get("q")}
             defaultValue={params.get("q") ?? ""}
-            placeholder="Search products"
+            placeholder={t("catalog.searchProducts")}
             className="h-9"
             onKeyDown={(event) => {
               if (event.key === "Enter") setParam("q", event.currentTarget.value || null);
             }}
           />
           <select
-            aria-label="Filter by collection"
+            aria-label={t("catalog.filterCollection")}
             className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
             value={activeCategory}
             onChange={(event) => setParam("category", event.target.value || null)}
           >
-            <option value="">All collections</option>
+            <option value="">{t("catalog.allCollections")}</option>
             {categories.map((category) => (
               <option key={category.slug} value={category.slug}>
                 {category.name}
@@ -67,12 +69,12 @@ export function CatalogControls({
             ))}
           </select>
           <select
-            aria-label="Filter by brand"
+            aria-label={t("catalog.filterBrand")}
             className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
             value={activeBrand}
             onChange={(event) => setParam("brand", event.target.value || null)}
           >
-            <option value="">All brands</option>
+            <option value="">{t("catalog.allBrands")}</option>
             {brands.map((brand) => (
               <option key={brand} value={brand}>
                 {brand}
@@ -80,14 +82,14 @@ export function CatalogControls({
             ))}
           </select>
           <select
-            aria-label="Sort products"
+            aria-label={t("catalog.sort")}
             className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
             value={params.get("sort") ?? "newest"}
             onChange={(event) => setParam("sort", event.target.value)}
           >
-            <option value="newest">Newest</option>
-            <option value="price-asc">Price, low to high</option>
-            <option value="price-desc">Price, high to low</option>
+            <option value="newest">{t("catalog.sortNewest")}</option>
+            <option value="price-asc">{t("catalog.sortPriceAsc")}</option>
+            <option value="price-desc">{t("catalog.sortPriceDesc")}</option>
           </select>
         </div>
         <form
@@ -95,7 +97,7 @@ export function CatalogControls({
           onSubmit={applyPrice}
         >
           <label className="flex-1 text-xs text-muted-foreground">
-            Minimum price (฿)
+            {t("catalog.minPrice")}
             <Input
               name="min"
               type="number"
@@ -105,7 +107,7 @@ export function CatalogControls({
             />
           </label>
           <label className="flex-1 text-xs text-muted-foreground">
-            Maximum price (฿)
+            {t("catalog.maxPrice")}
             <Input
               name="max"
               type="number"
@@ -115,14 +117,14 @@ export function CatalogControls({
             />
           </label>
           <Button type="submit" variant="outline">
-            Apply price
+            {t("catalog.applyPrice")}
           </Button>
           <Button
             type="button"
             variant="ghost"
             onClick={() => router.push("/catalog")}
           >
-            Clear
+            {t("catalog.clear")}
           </Button>
         </form>
       </div>

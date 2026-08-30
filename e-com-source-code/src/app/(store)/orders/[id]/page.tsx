@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { SectionDivider } from "@/components/section-divider";
 import { StatusChip } from "@/components/ui/status-chip";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { formatMoney } from "@/lib/money";
 import { formatAttributes } from "@/lib/product";
 import { authOptions } from "@/server/auth";
@@ -29,36 +30,39 @@ export default async function OrderConfirmationPage({
   const { id } = await params;
   const { g } = await searchParams;
   if (!session?.user && !g) redirect("/auth/signin");
-  const order = await (await serverCaller()).order.byId({ orderId: id, guestToken: g });
+  const [order, { t }] = await Promise.all([
+    (await serverCaller()).order.byId({ orderId: id, guestToken: g }),
+    getI18n(),
+  ]);
   if (!order) notFound();
   const digital = order.fulfillmentType !== "PHYSICAL";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
-      <p className="eyebrow">Order {order.promptpayRef}</p>
+      <p className="eyebrow">{t("orders.order")} {order.promptpayRef}</p>
       <h1 className="font-display text-3xl">
         {order.status === "PENDING"
-          ? "Waiting for payment"
+          ? t("orders.waitingPayment")
           : digital && order.status === "DELIVERED"
-            ? "Your digital order is ready"
-            : "Order confirmed"}
+            ? t("orders.digitalReady")
+            : t("orders.confirmed")}
       </h1>
       <StatusChip tone={tone[order.status] ?? "muted"}>{order.status.toLowerCase()}</StatusChip>
       <p className="text-muted-foreground">
         {order.fulfillmentType === "DIGITAL"
           ? order.status === "DELIVERED"
-            ? "Your access details are available below."
-            : "Payment is confirmed. The store is preparing your digital access details."
-          : `Estimated delivery ${order.estimatedDelivery ?? "—"}.${
+            ? t("orders.accessBelow")
+            : t("orders.preparingAccess")
+          : `${t("orders.eta")} ${order.estimatedDelivery ?? "—"}.${
               order.trackingNumber
-                ? ` Tracking ${order.trackingNumber} (${order.shippingCarrier ?? "carrier"}).`
+                ? ` ${t("orders.tracking")} ${order.trackingNumber} (${order.shippingCarrier ?? t("orders.carrier")}).`
                 : ""
             }`}
       </p>
       {digital && order.digitalDelivery ? (
         <section className="rounded-xl border border-primary/40 bg-card p-5">
-          <p className="eyebrow">Digital access</p>
-          <h2 className="font-display mt-2 text-xl">Delivery details</h2>
+          <p className="eyebrow">{t("orders.digitalAccess")}</p>
+          <h2 className="font-display mt-2 text-xl">{t("orders.deliveryDetails")}</h2>
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm leading-6">
             {order.digitalDelivery}
           </pre>
@@ -79,22 +83,22 @@ export default async function OrderConfirmationPage({
         ))}
         {order.discountCents ? (
           <div className="flex justify-between text-sm text-primary">
-            <span>Discount</span>
+            <span>{t("checkout.discount")}</span>
             <span className="font-tabular">-{formatMoney(order.discountCents)}</span>
           </div>
         ) : null}
         {order.taxCents ? (
           <div className="flex justify-between text-sm">
-            <span>VAT</span>
+            <span>{t("checkout.vat")}</span>
             <span className="font-tabular">{formatMoney(order.taxCents)}</span>
           </div>
         ) : null}
         <div className="flex justify-between text-sm">
-          <span>{order.fulfillmentType === "DIGITAL" ? "Digital delivery" : "Shipping"}</span>
+          <span>{order.fulfillmentType === "DIGITAL" ? t("checkout.digitalDelivery") : t("nav.shipping")}</span>
           <span className="font-tabular">{formatMoney(order.shippingFeeCents)}</span>
         </div>
         <div className="flex justify-between font-medium">
-          <span>Total</span>
+          <span>{t("checkout.total")}</span>
           <span className="font-tabular text-brass">{formatMoney(order.totalCents)}</span>
         </div>
       </div>

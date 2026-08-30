@@ -9,10 +9,11 @@ import { TiltCard } from "@/components/motion/tilt-card";
 import { SectionDivider } from "@/components/section-divider";
 import { db } from "@/lib/db";
 import { productImages } from "@/lib/product";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function HomePage() {
-  const [products, categories, storefront] = await Promise.all([
+  const [products, categories, storefront, { t }] = await Promise.all([
     db.product.findMany({
       where: { status: "PUBLISHED" },
       include: { category: true, variants: true },
@@ -24,6 +25,7 @@ export default async function HomePage() {
       orderBy: { name: "asc" },
     }),
     getStorefrontConfig(),
+    getI18n(),
   ]);
 
   const mapped = products.map((product) => ({
@@ -41,9 +43,9 @@ export default async function HomePage() {
 
       <section className="space-y-5" aria-labelledby="moving-collection">
         <Reveal>
-          <p className="eyebrow">Explore in motion</p>
+          <p className="eyebrow">{t("home.explore")}</p>
           <h2 id="moving-collection" className="font-display mt-2 text-2xl">
-            Across the collection
+            {t("home.across")}
           </h2>
         </Reveal>
         <ProductMarquee products={mapped} />
@@ -87,7 +89,7 @@ export default async function HomePage() {
         <div className="flex items-end justify-between">
           <h2 className="font-display text-2xl">{storefront.home.newTitle}</h2>
           <Link href="/catalog" className="text-sm text-muted-foreground hover:text-primary">
-            All products
+            {t("home.allProducts")}
           </Link>
         </div>
         <StaggerRoot className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
@@ -105,7 +107,7 @@ export default async function HomePage() {
         <div className="flex items-end justify-between">
           <h2 className="font-display text-2xl">{storefront.home.collectionsTitle}</h2>
           <Link href="/categories" className="text-sm text-muted-foreground hover:text-primary">
-            All collections
+            {t("home.allCollections")}
           </Link>
         </div>
         <StaggerRoot className="grid gap-4 sm:grid-cols-3">
@@ -116,7 +118,7 @@ export default async function HomePage() {
                 href={`/catalog?category=${category.slug}`}
                 className="premium-depth block h-full rounded-xl border border-border bg-card/90 p-5 backdrop-blur-sm"
               >
-                <p className="eyebrow">{category.products.length} pieces</p>
+                <p className="eyebrow">{category.products.length} {t("home.pieces")}</p>
                 <h3 className="font-display mt-2 text-xl">{category.name}</h3>
               </Link>
               </TiltCard>

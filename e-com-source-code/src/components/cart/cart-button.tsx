@@ -12,10 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { formatMoney } from "@/lib/money";
 import { trpc } from "@/trpc/client";
 
 export function CartButton() {
+  const { t } = useI18n();
   const cart = trpc.cart.get.useQuery();
   const count = cart.data?.count ?? 0;
   const lines = cart.data?.lines ?? [];
@@ -25,7 +27,7 @@ export function CartButton() {
     <Dialog>
       <DialogTrigger render={<Button variant="ghost" size="sm" className="relative" />}>
         <ShoppingBag className="size-4" />
-        <span className="sr-only">Cart</span>
+        <span className="sr-only">{t("cart.open")}</span>
         {count > 0 ? (
           <span className="font-tabular absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
             {count}
@@ -34,11 +36,11 @@ export function CartButton() {
       </DialogTrigger>
       <DialogContent className="fixed top-0 right-0 left-auto h-full max-h-none w-full max-w-md translate-x-0 translate-y-0 rounded-none border-y-0 border-l border-border sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display">Cart</DialogTitle>
-          <DialogDescription className="sr-only">Items in your bag</DialogDescription>
+          <DialogTitle className="font-display">{t("cart.title")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("cart.itemsInBag")}</DialogDescription>
         </DialogHeader>
         {lines.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Your cart is empty.</p>
+          <p className="text-sm text-muted-foreground">{t("cart.empty")}</p>
         ) : (
           <div className="space-y-4">
             {lines.map((line) => (
@@ -58,18 +60,18 @@ export function CartButton() {
               </div>
             ))}
             <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
+              <span>{t("cart.subtotal")}</span>
               <span className="font-tabular">{formatMoney(cart.data?.subtotalCents ?? 0)}</span>
             </div>
             <div className="flex gap-2">
               <Button className="flex-1" variant="outline" nativeButton={false} render={<Link href="/cart" />}>
-                View cart
+                {t("cart.viewCart")}
               </Button>
               {checkoutBlocked ? (
-                <Button className="flex-1" disabled>Out of stock</Button>
+                <Button className="flex-1" disabled>{t("cart.outOfStock")}</Button>
               ) : (
                 <Button className="flex-1" nativeButton={false} render={<Link href="/checkout" />}>
-                  Checkout
+                  {t("cart.checkout")}
                 </Button>
               )}
             </div>

@@ -4,6 +4,7 @@ import { Heart } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useWishlist } from "@/components/wishlist/wishlist-provider";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function WishlistButton({
   productId,
@@ -12,6 +13,7 @@ export function WishlistButton({
   productId: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   const { isLiked, toggle } = useWishlist();
   const reduceMotion = useReducedMotion();
   const liked = isLiked(productId);
@@ -19,7 +21,7 @@ export function WishlistButton({
   return (
     <motion.button
       type="button"
-      aria-label={liked ? "Remove from wishlist" : "Add to wishlist"}
+      aria-label={liked ? t("wishlist.remove") : t("wishlist.add")}
       aria-pressed={liked}
       whileTap={reduceMotion ? undefined : { scale: 0.78 }}
       animate={reduceMotion ? undefined : { scale: liked ? [1, 1.24, 1] : 1 }}

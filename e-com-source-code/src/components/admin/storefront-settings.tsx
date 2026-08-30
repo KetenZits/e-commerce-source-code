@@ -313,7 +313,7 @@ export function StorefrontSettingsForm({
           <Field label="Return window (days)">
             <Input type="number" {...form.register("business.returnDays", { valueAsNumber: true })} />
           </Field>
-          <Field label="Document language" className="sm:col-span-2">
+          <Field label="Default language (Thai / English)" className="sm:col-span-2">
             <select
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
               {...form.register("business.documentLanguage")}

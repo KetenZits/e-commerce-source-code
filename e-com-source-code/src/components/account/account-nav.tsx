@@ -4,24 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { canAccessAdmin } from "@/lib/roles";
-
-const LINKS = [
-  { href: "/dashboard", label: "Profile", exact: true },
-  { href: "/dashboard/orders", label: "Orders" },
-  { href: "/dashboard/addresses", label: "Addresses" },
-  { href: "/wishlist", label: "Wishlist" },
-];
+import { useI18n } from "@/components/i18n/locale-provider";
 
 export function AccountNav({ role }: { role?: string }) {
   const pathname = usePathname();
-  const links = canAccessAdmin(role)
-    ? [...LINKS, { href: "/admin", label: "Admin" }]
-    : LINKS;
+  const { t } = useI18n();
+  const links = [
+    { href: "/dashboard", label: t("account.profile"), exact: true },
+    { href: "/dashboard/orders", label: t("account.orders") },
+    { href: "/dashboard/addresses", label: t("account.addresses") },
+    { href: "/wishlist", label: t("account.wishlist") },
+    ...(canAccessAdmin(role) ? [{ href: "/admin", label: t("account.admin") }] : []),
+  ];
 
   return (
     <nav className="mt-6 flex flex-wrap gap-1 border-b border-border pb-px">
       {links.map((link) => {
-        const active = link.exact
+        const exact = "exact" in link && link.exact;
+        const active = exact
           ? pathname === link.href
           : pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (

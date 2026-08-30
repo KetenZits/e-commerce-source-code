@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { TiltCard } from "@/components/motion/tilt-card";
 
 export type ProductTileData = {
@@ -31,6 +32,7 @@ export function ProductTile({
   priority?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const { t } = useI18n();
   const reduceMotion = useReducedMotion();
   const primaryImage = product.images[0];
   const alternateImage = product.images[1];
@@ -84,14 +86,14 @@ export function ProductTile({
               </>
             ) : (
               <div className="flex size-full items-center justify-center px-6 text-center">
-                <p className="eyebrow">No photograph</p>
+                <p className="eyebrow">{t("product.noPhoto")}</p>
               </div>
             )}
             <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-linear-to-t from-foreground/18 to-transparent" />
             {!product.inStock ? (
               <div className="absolute inset-0 z-10 bg-background/35">
                 <span className="absolute bottom-3 left-3 rounded-full bg-card/90 px-2.5 py-1 text-[10px] tracking-[0.16em] text-muted-foreground uppercase shadow-sm backdrop-blur-sm">
-                  Out of stock
+                  {t("product.outOfStock")}
                 </span>
               </div>
             ) : null}

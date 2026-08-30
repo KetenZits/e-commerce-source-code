@@ -1,27 +1,18 @@
 import { LegalPage } from "@/components/legal/legal-page";
 import { PrivacyActions } from "@/components/legal/privacy-actions";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function PrivacyPage() {
-  const store = await getStorefrontConfig();
+  const [store, { t }] = await Promise.all([getStorefrontConfig(), getI18n()]);
   const { business, siteName } = store;
   const name = business.legalName || siteName;
 
   return (
-    <LegalPage title="Privacy">
-      <p>
-        This page is a template for {name}. Have it reviewed for PDPA or other privacy law that
-        applies to you before launch.
-      </p>
-      <p>
-        We store account details, addresses, order history, payment slips, and a cart cookie to
-        complete checkout. PromptPay slips are kept to prevent duplicate payments. Analytics cookies
-        load only if you accept them.
-      </p>
-      <p>
-        You can export or delete your account below when you have no open orders. We do not sell
-        personal data. Questions: {business.contactEmail}.
-      </p>
+    <LegalPage title={t("legal.privacy")}>
+      <p>{t("legal.privacyP1", { name })}</p>
+      <p>{t("legal.privacyP2")}</p>
+      <p>{t("legal.privacyP3", { email: business.contactEmail })}</p>
       <PrivacyActions />
     </LegalPage>
   );

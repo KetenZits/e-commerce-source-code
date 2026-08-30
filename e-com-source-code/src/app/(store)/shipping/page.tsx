@@ -3,26 +3,28 @@ import { ShippingInfo } from "@/components/shipping/shipping-info";
 import { SectionDivider } from "@/components/section-divider";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function ShippingPage() {
-  const [zones, storefront] = await Promise.all([
+  const [zones, storefront, { t }] = await Promise.all([
     db.shippingZone.findMany({ orderBy: { sortOrder: "asc" } }),
     getStorefrontConfig(),
+    getI18n(),
   ]);
   const digital = storefront.storeMode === "digital";
 
   return (
     <div className="mx-auto max-w-6xl space-y-12 px-4 py-10">
       <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">Home</Link>
+        <Link href="/" className="hover:text-foreground">{t("shipping.home")}</Link>
         <span>/</span>
-        <span>{digital ? "Digital delivery" : "Shipping"}</span>
+        <span>{digital ? t("nav.digitalDelivery") : t("shipping.title")}</span>
       </nav>
       <section className="grid gap-8 py-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
         <div className="max-w-2xl space-y-4">
           <p className="eyebrow">
-            {digital ? "Secure access after payment" : "From our studio to your door"}
+            {digital ? t("product.secureAccess") : t("shipping.fromStudio")}
           </p>
           <h1 className="font-display text-4xl sm:text-5xl">
             {digital
@@ -36,7 +38,7 @@ export default async function ShippingPage() {
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 text-sm leading-6">
-          <p className="eyebrow">At a glance</p>
+          <p className="eyebrow">{t("shipping.glance")}</p>
           {digital ? (
             <>
               <p className="mt-3">No shipping address or delivery fee</p>

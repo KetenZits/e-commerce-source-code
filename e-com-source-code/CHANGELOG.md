@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Thai / English storefront language switcher (cookie, `html lang`, checkout and account chrome)
+
 ## 0.1.0 — 2026-08-29
 
 First packaged source release.

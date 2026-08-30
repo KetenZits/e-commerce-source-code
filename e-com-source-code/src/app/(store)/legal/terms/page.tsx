@@ -1,31 +1,19 @@
 import { LegalPage } from "@/components/legal/legal-page";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
 export default async function TermsPage() {
-  const store = await getStorefrontConfig();
+  const [store, { t }] = await Promise.all([getStorefrontConfig(), getI18n()]);
   const { business, siteName } = store;
   const name = business.legalName || siteName;
+  const phone = business.phone ? ` · ${business.phone}` : "";
 
   return (
-    <LegalPage title="Terms of sale">
-      <p>
-        These terms are a template. Replace them with counsel-reviewed copy for {name} before you
-        take real orders.
-      </p>
-      <p>
-        Orders are placed with {name} ({business.city}, {business.country}) in Thai baht and paid by
-        PromptPay. A contract is formed when payment is verified. Physical goods are packed and
-        handed to a domestic carrier. Digital goods are delivered to the order page after
-        confirmation.
-      </p>
-      <p>
-        Guest checkout creates an order linked to the email you provide. Keep the order link to view
-        payment status, tracking, or digital access details.
-      </p>
-      <p>
-        Contact: {business.contactEmail}
-        {business.phone ? ` · ${business.phone}` : ""}.
-      </p>
+    <LegalPage title={t("legal.terms")}>
+      <p>{t("legal.termsP1", { name })}</p>
+      <p>{t("legal.termsP2", { name, city: business.city, country: business.country })}</p>
+      <p>{t("legal.termsP3")}</p>
+      <p>{t("legal.termsP4", { email: business.contactEmail, phone })}</p>
     </LegalPage>
   );
 }

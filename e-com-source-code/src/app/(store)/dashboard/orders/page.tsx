@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StatusChip } from "@/components/ui/status-chip";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { formatMoney } from "@/lib/money";
 import { serverCaller } from "@/trpc/server";
 
@@ -14,16 +15,19 @@ const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
 };
 
 export default async function OrdersPage() {
-  const orders = await (await serverCaller()).order.mine();
+  const [orders, { t }] = await Promise.all([
+    (await serverCaller()).order.mine(),
+    getI18n(),
+  ]);
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-3xl">Orders</h1>
+      <h1 className="font-display text-3xl">{t("orders.title")}</h1>
       {orders.length === 0 ? (
         <p className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
-          No orders yet.{" "}
+          {t("orders.empty")}{" "}
           <Link href="/catalog" className="text-primary">
-            Browse the catalog
+            {t("orders.shop")}
           </Link>
           .
         </p>
@@ -38,11 +42,11 @@ export default async function OrdersPage() {
               <div>
                 <p className="font-tabular text-sm">{order.promptpayRef}</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.items.length} item(s) ·{" "}
+                  {order.items.length} {t("orders.items")} ·{" "}
                   {order.fulfillmentType === "DIGITAL"
                     ? order.status === "DELIVERED"
-                      ? "access ready"
-                      : "digital delivery"
+                      ? t("orders.accessReady")
+                      : t("orders.digitalDelivery")
                     : order.estimatedDelivery ?? "—"}
                 </p>
               </div>

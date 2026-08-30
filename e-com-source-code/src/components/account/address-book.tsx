@@ -7,23 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addressSchema } from "@/server/schemas";
 import { trpc } from "@/trpc/client";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { THAI_PROVINCES } from "@/lib/constants";
 import type { z } from "zod";
 
 type Form = z.infer<typeof addressSchema>;
 
 export function AddressBook() {
+  const { t } = useI18n();
   const list = trpc.address.list.useQuery();
   const create = trpc.address.create.useMutation({
     onSuccess: () => {
-      toast.message("Address saved");
+      toast.message(t("addresses.saved"));
       list.refetch();
     },
     onError: (error) => toast.error(error.message),
   });
   const update = trpc.address.update.useMutation({
     onSuccess: () => {
-      toast.message("Address updated");
+      toast.message(t("addresses.updated"));
       list.refetch();
     },
     onError: (error) => toast.error(error.message),
@@ -75,21 +77,21 @@ export function AddressBook() {
                   })
                 }
               >
-                Default
+                {t("addresses.default")}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => remove.mutate({ id: address.id })}>
-                Remove
+                {t("cart.remove")}
               </Button>
             </div>
           </div>
         ))}
       </div>
       <form className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2" onSubmit={form.handleSubmit((values) => create.mutate(values))}>
-        <Input placeholder="Recipient" {...form.register("recipientName")} />
-        <Input placeholder="Phone" {...form.register("phone")} />
-        <Input className="sm:col-span-2" placeholder="Address" {...form.register("addressLine1")} />
-        <Input placeholder="Subdistrict" {...form.register("subdistrict")} />
-        <Input placeholder="District" {...form.register("district")} />
+        <Input placeholder={t("checkout.recipient")} {...form.register("recipientName")} />
+        <Input placeholder={t("checkout.phone")} {...form.register("phone")} />
+        <Input className="sm:col-span-2" placeholder={t("checkout.address")} {...form.register("addressLine1")} />
+        <Input placeholder={t("checkout.subdistrict")} {...form.register("subdistrict")} />
+        <Input placeholder={t("checkout.district")} {...form.register("district")} />
         <select className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm" {...form.register("province")}>
           {THAI_PROVINCES.map((province) => (
             <option key={province} value={province}>
@@ -97,9 +99,9 @@ export function AddressBook() {
             </option>
           ))}
         </select>
-        <Input placeholder="Postal code" {...form.register("postalCode")} />
+        <Input placeholder={t("checkout.postalCode")} {...form.register("postalCode")} />
         <Button type="submit" disabled={create.isPending}>
-          Save address
+          {t("checkout.saveAddress")}
         </Button>
       </form>
     </div>

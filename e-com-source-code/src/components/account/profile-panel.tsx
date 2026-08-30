@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrivacyActions } from "@/components/legal/privacy-actions";
+import { useI18n } from "@/components/i18n/locale-provider";
+import { localeTag } from "@/lib/i18n/config";
 import { StatusChip } from "@/components/ui/status-chip";
 import { trpc } from "@/trpc/client";
 
@@ -39,6 +41,7 @@ export function ProfilePanel({
   addressCount: number;
 }) {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const { update } = useSession();
   const fileInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -46,29 +49,29 @@ export function ProfilePanel({
   const imageSrc = preview === "" ? null : (preview ?? profile.image);
   const save = trpc.auth.updateProfile.useMutation({
     onSuccess: async (user) => {
-      toast.message("Profile saved");
+      toast.message(t("profile.savedToast"));
       await update({ name: user.name });
       router.refresh();
     },
     onError: (error) => toast.error(error.message),
   });
   const changePassword = trpc.auth.changePassword.useMutation({
-    onSuccess: () => toast.message("Password updated"),
+    onSuccess: () => toast.message(t("profile.passwordUpdated")),
     onError: (error) => toast.error(error.message),
   });
   const setPassword = trpc.auth.setPassword.useMutation({
     onSuccess: () => {
-      toast.message("Password saved. You can sign in with email next time.");
+      toast.message(t("profile.passwordSet"));
       router.refresh();
     },
     onError: (error) => toast.error(error.message),
   });
   const resend = trpc.auth.resendVerification.useMutation({
-    onSuccess: () => toast.message("Verification email sent"),
+    onSuccess: () => toast.message(t("profile.verifySent")),
     onError: (error) => toast.error(error.message),
   });
 
-  const joined = new Date(profile.createdAt).toLocaleDateString("en-GB", {
+  const joined = new Date(profile.createdAt).toLocaleDateString(localeTag(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -90,16 +93,16 @@ export function ProfilePanel({
       const response = await fetch("/api/account/avatar", { method: "POST", body: data });
       const result = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !result.url) {
-        throw new Error(result.error ?? "Upload failed");
+        throw new Error(result.error ?? t("profile.uploadFailed"));
       }
-      toast.message("Photo updated");
+      toast.message(t("profile.photoUpdated"));
       URL.revokeObjectURL(local);
       setPreview(result.url);
       await refreshPhoto(result.url);
     } catch (error) {
       URL.revokeObjectURL(local);
       setPreview(null);
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      toast.error(error instanceof Error ? error.message : t("profile.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -112,13 +115,13 @@ export function ProfilePanel({
       const response = await fetch("/api/account/avatar", { method: "DELETE" });
       if (!response.ok) {
         const result = (await response.json()) as { error?: string };
-        throw new Error(result.error ?? "Could not remove photo");
+        throw new Error(result.error ?? t("profile.removePhoto"));
       }
       setPreview("");
-      toast.message("Photo removed");
+      toast.message(t("profile.photoRemoved"));
       await refreshPhoto(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove photo");
+      toast.error(error instanceof Error ? error.message : t("profile.removePhoto"));
     } finally {
       setUploading(false);
     }
@@ -134,7 +137,7 @@ export function ProfilePanel({
               className="group relative size-20 shrink-0 overflow-hidden rounded-full ring-1 ring-border focus-visible:ring-2 focus-visible:ring-ring/40"
               disabled={uploading}
               onClick={() => fileInput.current?.click()}
-              aria-label="Change profile photo"
+              aria-label={t("profile.changePhoto")}
             >
               {imageSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -163,7 +166,7 @@ export function ProfilePanel({
                 disabled={uploading}
                 onClick={() => fileInput.current?.click()}
               >
-                {uploading ? "Uploading" : "Change photo"}
+                {uploading ? t("profile.uploading") : t("profile.changePhoto")}
               </Button>
               {imageSrc ? (
                 <Button
@@ -173,18 +176,18 @@ export function ProfilePanel({
                   disabled={uploading}
                   onClick={() => void removePhoto()}
                 >
-                  Remove
+                  {t("profile.remove")}
                 </Button>
               ) : null}
-              <p className="text-xs text-muted-foreground">JPEG, PNG, or WebP · under 2 MB</p>
+              <p className="text-xs text-muted-foreground">{t("profile.photoHint")}</p>
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="font-display truncate text-3xl">{profile.name || "Your profile"}</h1>
+            <h1 className="font-display truncate text-3xl">{profile.name || t("profile.yourProfile")}</h1>
             <p className="mt-1 truncate text-sm text-muted-foreground">{profile.email}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <StatusChip tone={profile.emailVerified ? "forest" : "brass"}>
-                {profile.emailVerified ? "Email verified" : "Email unverified"}
+                {profile.emailVerified ? t("profile.emailVerified") : t("profile.emailUnverified")}
               </StatusChip>
               {profile.role !== "BUYER" ? (
                 <StatusChip tone="muted">{profile.role.replaceAll("_", " ").toLowerCase()}</StatusChip>
@@ -193,16 +196,16 @@ export function ProfilePanel({
           </div>
         </div>
         <div className="grid border-t border-border sm:grid-cols-3">
-          <Stat label="Member since" value={joined} />
-          <Stat label="Orders" value={String(orderCount)} />
-          <Stat label="Saved addresses" value={String(addressCount)} />
+          <Stat label={t("profile.memberSince")} value={joined} />
+          <Stat label={t("profile.orders")} value={String(orderCount)} />
+          <Stat label={t("profile.savedAddresses")} value={String(addressCount)} />
         </div>
       </section>
 
       {!profile.emailVerified ? (
         <section className="rounded-2xl border border-brass/30 bg-card p-5">
           <p className="text-sm leading-6 text-muted-foreground">
-            Confirm your email to keep order notices and password resets working.
+            {t("profile.confirmEmail")}
           </p>
           <Button
             className="mt-3"
@@ -212,14 +215,14 @@ export function ProfilePanel({
             disabled={resend.isPending}
             onClick={() => resend.mutate()}
           >
-            {resend.isPending ? "Sending" : "Resend verification"}
+            {resend.isPending ? t("profile.sending") : t("profile.resend")}
           </Button>
         </section>
       ) : null}
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-xl">Display name</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Shown on reviews, orders, and in the header.</p>
+        <h2 className="font-display text-xl">{t("profile.displayName")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("profile.nameHint")}</p>
         <form
           className="mt-5 max-w-md space-y-3"
           onSubmit={(event) => {
@@ -229,7 +232,7 @@ export function ProfilePanel({
           }}
         >
           <div>
-            <Label htmlFor="profile-name">Name</Label>
+            <Label htmlFor="profile-name">{t("auth.name")}</Label>
             <Input
               id="profile-name"
               name="name"
@@ -241,21 +244,19 @@ export function ProfilePanel({
             />
           </div>
           <div>
-            <Label htmlFor="profile-email">Email</Label>
+            <Label htmlFor="profile-email">{t("auth.email")}</Label>
             <Input id="profile-email" className="mt-1.5" value={profile.email} readOnly />
           </div>
           <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? "Saving" : "Save name"}
+            {save.isPending ? t("profile.saving") : t("profile.saveName")}
           </Button>
         </form>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-xl">{profile.hasPassword ? "Password" : "Set a password"}</h2>
+        <h2 className="font-display text-xl">{profile.hasPassword ? t("profile.password") : t("profile.setPasswordTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {profile.hasPassword
-            ? "Use at least 10 characters, with upper and lowercase letters and a number."
-            : "This account was created with a social login. Add a password to sign in with email as well."}
+          {profile.hasPassword ? t("profile.passwordHint") : t("profile.socialHint")}
         </p>
         {profile.hasPassword ? (
           <form
@@ -271,7 +272,7 @@ export function ProfilePanel({
             }}
           >
             <div>
-              <Label htmlFor="current-password">Current password</Label>
+              <Label htmlFor="current-password">{t("profile.current")}</Label>
               <Input
                 id="current-password"
                 name="currentPassword"
@@ -282,7 +283,7 @@ export function ProfilePanel({
               />
             </div>
             <div>
-              <Label htmlFor="new-password">New password</Label>
+              <Label htmlFor="new-password">{t("profile.newPassword")}</Label>
               <Input
                 id="new-password"
                 name="password"
@@ -294,7 +295,7 @@ export function ProfilePanel({
               />
             </div>
             <Button type="submit" disabled={changePassword.isPending}>
-              {changePassword.isPending ? "Updating" : "Update password"}
+              {changePassword.isPending ? t("profile.updating") : t("profile.updatePassword")}
             </Button>
           </form>
         ) : (
@@ -308,7 +309,7 @@ export function ProfilePanel({
             }}
           >
             <div>
-              <Label htmlFor="set-password">New password</Label>
+              <Label htmlFor="set-password">{t("profile.newPassword")}</Label>
               <Input
                 id="set-password"
                 name="password"
@@ -320,17 +321,16 @@ export function ProfilePanel({
               />
             </div>
             <Button type="submit" disabled={setPassword.isPending}>
-              {setPassword.isPending ? "Saving" : "Set password"}
+              {setPassword.isPending ? t("profile.saving") : t("profile.setPassword")}
             </Button>
           </form>
         )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-xl">Privacy</h2>
+        <h2 className="font-display text-xl">{t("profile.privacy")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Download a copy of your orders, addresses, and reviews, or delete the account after open
-          orders are finished.
+          {t("profile.privacyHint")}
         </p>
         <PrivacyActions />
       </section>

@@ -6,9 +6,11 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ProductTile } from "@/components/product/product-tile";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/components/wishlist/wishlist-provider";
+import { useI18n } from "@/components/i18n/locale-provider";
 import { trpc } from "@/trpc/client";
 
 export function WishlistView() {
+  const { t } = useI18n();
   const reduceMotion = useReducedMotion();
   const { ids, hydrated } = useWishlist();
   const products = trpc.product.byIds.useQuery(
@@ -17,7 +19,7 @@ export function WishlistView() {
   );
 
   if (!hydrated || (ids.length > 0 && !products.data)) {
-    return <p className="text-sm text-muted-foreground">Loading wishlist…</p>;
+    return <p className="text-sm text-muted-foreground">{t("wishlist.loading")}</p>;
   }
 
   if (ids.length === 0) {
@@ -28,13 +30,12 @@ export function WishlistView() {
         className="rounded-xl border border-border bg-card px-6 py-16 text-center"
       >
         <Heart className="mx-auto size-7 text-muted-foreground" />
-        <h2 className="font-display mt-4 text-2xl">Keep a few pieces close.</h2>
+        <h2 className="font-display mt-4 text-2xl">{t("wishlist.keepClose")}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Tap the heart on any product. Guest picks stay on this device and merge
-          into your account when you sign in.
+          {t("wishlist.keepHint")}
         </p>
         <Button className="mt-6" nativeButton={false} render={<Link href="/catalog" />}>
-          Browse the catalog
+          {t("wishlist.browse")}
         </Button>
       </motion.div>
     );

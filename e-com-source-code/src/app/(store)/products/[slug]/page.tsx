@@ -9,6 +9,7 @@ import { RecentlyViewed, TrackRecentlyViewed } from "@/components/product/recent
 import { Reveal } from "@/components/motion/reveal";
 import { SectionDivider } from "@/components/section-divider";
 import { formatMoney } from "@/lib/money";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { serverCaller } from "@/trpc/server";
 
@@ -34,9 +35,10 @@ export async function generateMetadata({
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const caller = await serverCaller();
-  const [product, storefront] = await Promise.all([
+  const [product, storefront, { t }] = await Promise.all([
     caller.product.bySlug({ slug }),
     getStorefrontConfig(),
+    getI18n(),
   ]);
   if (!product) notFound();
   const related = await caller.product.related({
@@ -63,7 +65,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         }}
       />
       <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/">Home</Link>
+        <Link href="/">{t("product.home")}</Link>
         <span>/</span>
         <Link href={`/catalog?category=${product.category.slug}`}>{product.category.name}</Link>
         <span>/</span>
@@ -81,23 +83,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <Reveal className="lg:sticky lg:top-24 lg:self-start lg:pt-8">
         <aside className="space-y-6">
           {!inStock ? (
-            <p className="text-sm text-destructive">Out of stock</p>
+            <p className="text-sm text-destructive">{t("product.outOfStock")}</p>
           ) : (
             <p className="text-xs tracking-[0.14em] text-primary uppercase">
               {storefront.storeMode === "digital"
-                ? "Digital delivery"
-                : "Ready to ship"}
+                ? t("product.digitalDelivery")
+                : t("product.readyToShip")}
             </p>
           )}
           <p className="leading-7 text-muted-foreground">{product.description}</p>
           <SectionDivider />
           <AddToCart variants={product.variants} />
           <div className="grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs text-muted-foreground">
-            <span>PromptPay checkout</span>
+            <span>{t("product.promptpay")}</span>
             <span className="text-right">
               {product.fulfillmentType === "DIGITAL" || storefront.storeMode === "digital"
-                ? "Secure access after payment"
-                : "Tracked Thailand delivery"}
+                ? t("product.secureAccess")
+                : t("product.trackedDelivery")}
             </span>
           </div>
         </aside>
@@ -105,15 +107,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       </div>
       {product.reviews.length ? (
         <section className="space-y-4">
-          <h2 className="font-display text-2xl">Reviews</h2>
+          <h2 className="font-display text-2xl">{t("product.reviews")}</h2>
           <p className="text-sm text-muted-foreground">
-            {product.rating?.toFixed(1)} / 5 · {product.reviewCount} review(s)
+            {product.rating?.toFixed(1)} / 5 · {product.reviewCount} {t("product.reviewCount")}
           </p>
           <div className="space-y-3">
             {product.reviews.map((review) => (
               <article key={review.id} className="rounded-xl border border-border bg-card p-4">
                 <p className="text-sm font-medium">
-                  {review.user.name ?? "Customer"} · {review.rating}/5
+                  {review.user.name ?? t("product.customer")} · {review.rating}/5
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.comment}</p>
               </article>
@@ -127,9 +129,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <SectionDivider />
           <section className="space-y-5" aria-labelledby="related-products">
             <Reveal>
-              <p className="eyebrow">Keep exploring</p>
+              <p className="eyebrow">{t("product.keepExploring")}</p>
               <h2 id="related-products" className="font-display mt-2 text-2xl">
-                More from the collection
+                {t("product.moreFrom")}
               </h2>
             </Reveal>
             <ProductMarquee products={related} />

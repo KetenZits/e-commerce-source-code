@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans_Thai, Noto_Serif_Thai } from "next/font/google";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/providers";
+import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import "./globals.css";
 
@@ -41,16 +42,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const storefront = await getStorefrontConfig();
+  const [storefront, i18n] = await Promise.all([getStorefrontConfig(), getI18n()]);
   const origin = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
   return (
     <html
-      lang={storefront.business.documentLanguage}
+      lang={i18n.locale}
       className={`${display.variable} ${displayThai.variable} ${body.variable} ${mono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col bg-background">
-        <Providers>{children}</Providers>
+        <Providers locale={i18n.locale} messages={i18n.messages}>{children}</Providers>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

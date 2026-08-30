@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { signInSchema } from "@/server/schemas";
 import type { z } from "zod";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n/locale-provider";
 
 type Form = z.infer<typeof signInSchema>;
 
 export function SignInForm({ google }: { google: boolean }) {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") ?? "/";
@@ -33,7 +35,7 @@ export function SignInForm({ google }: { google: boolean }) {
         const result = await signIn("credentials", { ...values, redirect: false, callbackUrl });
         setPending(false);
         if (result?.error) {
-          toast.error("Email or password does not match.");
+          toast.error(t("auth.invalid"));
           return;
         }
         router.push(callbackUrl);
@@ -41,31 +43,31 @@ export function SignInForm({ google }: { google: boolean }) {
       })}
     >
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("auth.email")}</Label>
         <Input id="email" type="email" {...form.register("email")} />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("auth.password")}</Label>
         <Input id="password" type="password" {...form.register("password")} />
       </div>
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Signing in" : "Sign in"}
+        {pending ? t("auth.signingIn") : t("auth.signIn")}
       </Button>
       {google ? (
         <Button type="button" variant="outline" className="w-full" onClick={() => signIn("google", { callbackUrl })}>
-          Continue with Google
+          {t("auth.google")}
         </Button>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        Forgot your password?{" "}
+        {t("auth.forgot")}{" "}
         <Link href="/auth/forgot" className="text-primary">
-          Reset it
+          {t("auth.resetIt")}
         </Link>
       </p>
       <p className="text-sm text-muted-foreground">
-        No account?{" "}
+        {t("auth.noAccountQ")}{" "}
         <Link href="/auth/register" className="text-primary">
-          Create one
+          {t("auth.createOne")}
         </Link>
       </p>
     </form>
