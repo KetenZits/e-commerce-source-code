@@ -293,6 +293,10 @@ export const reviewSchema = z.object({
   comment: z.string().trim().min(10).max(3000),
 });
 
+export const reviewSettingsSchema = z.object({
+  autoPublish: z.boolean(),
+});
+
 export const reviewModerationSchema = z.object({
   reviewId: z.string().min(1),
   status: z.enum(["PUBLISHED", "REJECTED"]),

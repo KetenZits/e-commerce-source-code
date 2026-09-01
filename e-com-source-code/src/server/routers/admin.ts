@@ -7,6 +7,7 @@ import {
   getStorefrontConfig,
   saveStorefrontConfig,
 } from "@/lib/storefront-config";
+import { getReviewConfig, saveReviewConfig } from "@/lib/review-config";
 import { getTaxConfig, saveTaxConfig } from "@/lib/commerce-config";
 import {
   categorySchema,
@@ -18,6 +19,7 @@ import {
   promotionSchema,
   refundSchema,
   reviewModerationSchema,
+  reviewSettingsSchema,
   shippingZoneSchema,
   stockAdjustSchema,
   storefrontSettingsSchema,
@@ -149,6 +151,21 @@ export const adminRouter = router({
 
   upsertProduct: catalogProcedure.input(productFormSchema.extend({ id: z.string().optional() })).mutation(async ({ ctx, input }) => {
     const { id, variants, ...rest } = input;
+    const previous = id
+      ? await ctx.db.product.findUnique({
+          where: { id },
+          include: { variants: { select: { priceCents: true } } },
+        })
+      : null;
+    const oldBase = previous?.basePriceCents;
+    const incomingPrices = variants.map((variant) => variant.priceCents);
+    const allIncomingSame = incomingPrices.length > 0 && incomingPrices.every((price) => price === incomingPrices[0]);
+    const shouldSyncVariantsToBase =
+      Boolean(id) &&
+      oldBase != null &&
+      rest.basePriceCents !== oldBase &&
+      allIncomingSame &&
+      incomingPrices[0] === oldBase;
     const product = await ctx.db.$transaction(async (tx) => {
       const saved = id
         ? await tx.product.update({
@@ -169,7 +186,7 @@ export const adminRouter = router({
         const data = {
           sku: variant.sku,
           attributes: variant.attributes,
-          priceCents: variant.priceCents,
+          priceCents: shouldSyncVariantsToBase ? rest.basePriceCents : variant.priceCents,
           stockQty: variant.stockQty,
           weightGrams: variant.weightGrams,
           imageUrl: variant.imageUrl || null,
@@ -220,7 +237,17 @@ export const adminRouter = router({
 
   inventory: catalogProcedure.query(async ({ ctx }) => {
     const variants = await ctx.db.productVariant.findMany({
-      include: { product: true },
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            brand: true,
+            images: true,
+            fulfillmentType: true,
+          },
+        },
+      },
       orderBy: { stockQty: "asc" },
     });
     return variants.map((variant) => ({
@@ -235,7 +262,15 @@ export const adminRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.db.inventoryMovement.findMany({
         where: input?.variantId ? { variantId: input.variantId } : undefined,
-        include: { variant: { include: { product: true } } },
+        include: {
+          variant: {
+            select: {
+              sku: true,
+              imageUrl: true,
+              product: { select: { title: true, images: true } },
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
         take: 100,
       });
@@ -490,6 +525,12 @@ export const adminRouter = router({
       include: { product: true, user: { select: { email: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
+  }),
+
+  reviewSettings: catalogProcedure.query(async () => getReviewConfig()),
+
+  saveReviewSettings: catalogProcedure.input(reviewSettingsSchema).mutation(async ({ input }) => {
+    return saveReviewConfig(input);
   }),
 
   moderateReview: catalogProcedure.input(reviewModerationSchema).mutation(async ({ ctx, input }) => {

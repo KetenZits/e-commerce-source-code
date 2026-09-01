@@ -2,22 +2,36 @@
 
 import { useState } from "react";
 import {
+  ArcElement,
   CategoryScale,
   Chart as ChartJS,
   LinearScale,
   BarElement,
   LineElement,
   PointElement,
+  Legend,
   Tooltip,
 } from "chart.js";
-import { Bar, Line } from "react-chartjs-2";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { formatChartTick } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+);
 
 export function RevenueCharts({
   totalCents,
+  paidCount,
+  pendingCount,
   ordersToday,
   ordersThisMonth,
   averageOrderCents,
@@ -75,7 +89,7 @@ export function RevenueCharts({
         <div className="h-72">
           <Line
             data={{
-              labels: series.map((row) => row.date),
+              labels: series.map((row) => formatChartTick(row.date, period)),
               datasets: [
                 {
                   data: series.map((row) => row.cents / 100),
@@ -115,8 +129,35 @@ export function RevenueCharts({
           />
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="eyebrow mb-4">Best-selling products</p>
-          <ol className="space-y-3">
+          <p className="eyebrow mb-4">Order mix</p>
+          {paidCount + pendingCount === 0 ? (
+            <p className="text-sm text-muted-foreground">No orders to chart yet.</p>
+          ) : (
+            <div className="mx-auto h-56 max-w-xs">
+              <Doughnut
+                data={{
+                  labels: ["Paid / fulfilled", "Awaiting payment"],
+                  datasets: [
+                    {
+                      data: [paidCount, pendingCount],
+                      backgroundColor: ["#2C3B32", "#B08D57"],
+                      borderWidth: 0,
+                    },
+                  ],
+                }}
+                options={{
+                  plugins: {
+                    legend: {
+                      position: "bottom",
+                      labels: { color: tick, boxWidth: 10, font: { size: 11 } },
+                    },
+                  },
+                  cutout: "62%",
+                }}
+              />
+            </div>
+          )}
+          <ol className="mt-4 space-y-3">
             {topProducts.map((product, index) => (
               <li key={product.title} className="flex items-center gap-3 border-b border-border pb-3 last:border-0">
                 <span className="font-tabular text-xs text-muted-foreground">

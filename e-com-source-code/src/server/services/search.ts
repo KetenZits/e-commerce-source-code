@@ -12,7 +12,9 @@ function toDocument(product: ProductRecord) {
     brand: product.brand,
     category: product.category.slug,
     description: product.description,
-    priceCents: product.basePriceCents,
+    priceCents: product.variants.length
+      ? Math.min(...product.variants.map((variant) => variant.priceCents))
+      : product.basePriceCents,
     status: product.status,
   };
 }

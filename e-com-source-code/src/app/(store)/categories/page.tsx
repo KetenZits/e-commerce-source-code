@@ -5,7 +5,7 @@ import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { SectionDivider } from "@/components/section-divider";
 import { db } from "@/lib/db";
-import { productImages } from "@/lib/product";
+import { productImages, sellingPriceCents } from "@/lib/product";
 import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
@@ -29,10 +29,7 @@ export default async function CategoriesPage() {
     ...product,
     images: productImages(product.images),
     inStock: product.variants.some((variant) => variant.stockQty > 0),
-    minPriceCents: Math.min(
-      ...product.variants.map((variant) => variant.priceCents),
-      product.basePriceCents
-    ),
+    minPriceCents: sellingPriceCents(product),
   }));
 
   return (

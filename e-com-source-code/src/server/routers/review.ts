@@ -1,7 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, publicProcedure, router } from "@/server/trpc";
-import { reviewSchema } from "@/server/schemas";
 import { z } from "zod";
+import { getReviewConfig } from "@/lib/review-config";
+import { reviewSchema } from "@/server/schemas";
+import { protectedProcedure, publicProcedure, router } from "@/server/trpc";
 
 export const reviewRouter = router({
   forProduct: publicProcedure.input(z.object({ productId: z.string() })).query(async ({ ctx, input }) => {
@@ -19,6 +20,7 @@ export const reviewRouter = router({
         variant: { productId: input.productId },
       },
     });
+    const { autoPublish } = await getReviewConfig();
     try {
       return await ctx.db.review.create({
         data: {
@@ -27,7 +29,7 @@ export const reviewRouter = router({
           rating: input.rating,
           comment: input.comment,
           verifiedPurchase: Boolean(purchased),
-          status: "PENDING",
+          status: autoPublish ? "PUBLISHED" : "PENDING",
         },
       });
     } catch {

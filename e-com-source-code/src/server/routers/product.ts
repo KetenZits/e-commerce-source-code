@@ -4,7 +4,7 @@ import { z } from "zod";
 import { catalogQuerySchema, stockAlertSchema } from "@/server/schemas";
 import { publicProcedure, router } from "@/server/trpc";
 import { searchProductIds } from "@/server/services/search";
-import { productImages } from "@/lib/product";
+import { defaultVariantId, productImages, sellingPriceCents } from "@/lib/product";
 import { availableQty } from "@/server/services/inventory";
 import { upsertStockAlert } from "@/server/services/stock-alert-store";
 
@@ -57,7 +57,8 @@ export const productRouter = router({
       inStock: product.variants.some(
         (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
       ),
-      minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
+      minPriceCents: sellingPriceCents(product),
+      variantId: defaultVariantId(product.variants),
     }));
     if (input.sort === "price-asc") items.sort((a, b) => a.minPriceCents - b.minPriceCents);
     if (input.sort === "price-desc") items.sort((a, b) => b.minPriceCents - a.minPriceCents);
@@ -126,10 +127,8 @@ export const productRouter = router({
           inStock: product.variants.some(
             (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
           ),
-          minPriceCents: Math.min(
-            ...product.variants.map((variant) => variant.priceCents),
-            product.basePriceCents,
-          ),
+          minPriceCents: sellingPriceCents(product),
+          variantId: defaultVariantId(product.variants),
         }));
     }),
 
@@ -149,10 +148,8 @@ export const productRouter = router({
           inStock: product.variants.some(
             (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
           ),
-          minPriceCents: Math.min(
-            ...product.variants.map((variant) => variant.priceCents),
-            product.basePriceCents
-          ),
+          minPriceCents: sellingPriceCents(product),
+          variantId: defaultVariantId(product.variants),
         }))
         .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
     }),
@@ -170,7 +167,7 @@ export const productRouter = router({
       inStock: product.variants.some(
         (variant) => availableQty(variant.stockQty, variant.reservedQty) > 0,
       ),
-      minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
+      minPriceCents: sellingPriceCents(product),
     }));
   }),
 

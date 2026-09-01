@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { differenceInSeconds } from "date-fns";
 import { toast } from "sonner";
+import { LordIcon } from "@/components/icons/lord-icon";
+import checkIcon from "@/icons/lordicon/check.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -130,7 +132,22 @@ export function PaymentClient({
           tone={displayPhase === "confirmed" ? "forest" : displayPhase === "verifying" ? "brass" : "muted"}
           pulse={displayPhase === "verifying"}
         >
-          {displayPhase === "confirmed" ? t("checkout.confirmedChip") : displayPhase === "verifying" ? t("checkout.verifyingChip") : t("checkout.waitingPay")}
+          {displayPhase === "confirmed" ? (
+            <>
+              <LordIcon
+                icon={checkIcon}
+                size={14}
+                trigger="once"
+                state="in-check"
+                colorize="currentColor"
+              />
+              {t("checkout.confirmedChip")}
+            </>
+          ) : displayPhase === "verifying" ? (
+            t("checkout.verifyingChip")
+          ) : (
+            t("checkout.waitingPay")
+          )}
         </StatusChip>
         <p className="font-tabular text-xs text-muted-foreground">
           {order.data.promptpayRef} · {minutes}:{seconds}

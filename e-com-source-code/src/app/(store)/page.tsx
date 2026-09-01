@@ -8,7 +8,7 @@ import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
 import { TiltCard } from "@/components/motion/tilt-card";
 import { SectionDivider } from "@/components/section-divider";
 import { db } from "@/lib/db";
-import { productImages } from "@/lib/product";
+import { productImages, sellingPriceCents, defaultVariantId } from "@/lib/product";
 import { getI18n } from "@/lib/i18n/get-locale";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 
@@ -32,7 +32,8 @@ export default async function HomePage() {
     ...product,
     images: productImages(product.images),
     inStock: product.variants.some((variant) => variant.stockQty > 0),
-    minPriceCents: Math.min(...product.variants.map((variant) => variant.priceCents), product.basePriceCents),
+    minPriceCents: sellingPriceCents(product),
+    variantId: defaultVariantId(product.variants),
   }));
   const featured = mapped.slice(0, 3);
   const newest = mapped.slice(0, 4);
@@ -41,14 +42,16 @@ export default async function HomePage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-16">
       <HomeHero product={newest[0]} content={storefront.hero} />
 
-      <section className="space-y-5" aria-labelledby="moving-collection">
-        <Reveal>
-          <p className="eyebrow">{t("home.explore")}</p>
-          <h2 id="moving-collection" className="font-display mt-2 text-2xl">
-            {t("home.across")}
-          </h2>
-        </Reveal>
-        <ProductMarquee products={mapped} />
+      <section aria-labelledby="moving-collection">
+        <ProductMarquee
+          products={mapped}
+          eyebrow={t("home.explore")}
+          title={t("home.across")}
+          description={t("home.acrossHint")}
+          cta={{ href: "/catalog", label: t("home.viewAllProducts") }}
+          highlightId={featured[0]?.id}
+          headingId="moving-collection"
+        />
       </section>
 
       <SectionDivider />

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Heart } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import { LordIcon } from "@/components/icons/lord-icon";
+import { LORDICON_COLORS } from "@/icons/lordicon";
+import heartIcon from "@/icons/lordicon/heart.json";
 import { ProductTile } from "@/components/product/product-tile";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/components/wishlist/wishlist-provider";
@@ -29,7 +31,14 @@ export function WishlistView() {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-xl border border-border bg-card px-6 py-16 text-center"
       >
-        <Heart className="mx-auto size-7 text-muted-foreground" />
+        <LordIcon
+          icon={heartIcon}
+          size={80}
+          className="mx-auto"
+          trigger="once"
+          state="in-heart"
+          colors={LORDICON_COLORS.brand}
+        />
         <h2 className="font-display mt-4 text-2xl">{t("wishlist.keepClose")}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {t("wishlist.keepHint")}

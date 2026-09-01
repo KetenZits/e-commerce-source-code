@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
+import { LordIcon } from "@/components/icons/lord-icon";
+import { LORDICON_COLORS } from "@/icons/lordicon";
+import bagIcon from "@/icons/lordicon/bag.json";
 import { Button } from "@/components/ui/button";
 import { SectionDivider } from "@/components/section-divider";
 import { useI18n } from "@/components/i18n/locale-provider";
@@ -64,7 +67,14 @@ export function CartView({ storeMode }: { storeMode: StoreMode }) {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-xl border border-border bg-card px-6 py-16 text-center"
       >
-        <ShoppingBag className="mx-auto size-8 text-muted-foreground" />
+        <LordIcon
+          icon={bagIcon}
+          size={80}
+          className="mx-auto"
+          trigger="once"
+          state="in-reveal"
+          colors={LORDICON_COLORS.brand}
+        />
         <h2 className="font-display mt-4 text-2xl">{t("cart.waiting")}</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
           {t("cart.waitingHint")}

@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ShoppingBag } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
+import { LordIcon } from "@/components/icons/lord-icon";
+import bagIcon from "@/icons/lordicon/bag.json";
+import checkIcon from "@/icons/lordicon/check.json";
 import { Button } from "@/components/ui/button";
 import { formatAttributes, asAttributes } from "@/lib/product";
 import { StockAlertForm } from "@/components/product/stock-alert-form";
@@ -81,7 +83,17 @@ export function AddToCart({ variants }: { variants: Variant[] }) {
             animate={added && !reduceMotion ? { scale: [1, 1.3, 1] } : { scale: 1 }}
             className="inline-flex size-7 items-center justify-center rounded-full border border-primary-foreground/30"
           >
-            {added ? <Check className="size-3.5" /> : <ShoppingBag className="size-3.5" />}
+            {added ? (
+              <LordIcon
+                icon={checkIcon}
+                size={16}
+                trigger="once"
+                state="in-check"
+                colorize="currentColor"
+              />
+            ) : (
+              <LordIcon icon={bagIcon} size={16} trigger="manual" colorize="currentColor" />
+            )}
           </motion.span>
         </Button>
       </motion.div>

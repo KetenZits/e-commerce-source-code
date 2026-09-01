@@ -1,50 +1,90 @@
 "use client";
 
-export function InventoryMovements({
-  rows,
-}: {
-  rows: {
-    id: string;
-    type: string;
-    quantity: number;
-    note: string | null;
-    createdAt: Date;
-    variant: { sku: string; product: { title: string } };
-  }[];
-}) {
+import { useMemo } from "react";
+import Image from "next/image";
+import { AdminDataTable, createAdminColumnHelper } from "@/components/admin/data-table";
+import { formatDateTime, formatRelative } from "@/lib/datetime";
+import { productImages } from "@/lib/product";
+
+type MovementRow = {
+  id: string;
+  type: string;
+  quantity: number;
+  note: string | null;
+  createdAt: Date;
+  variant: {
+    sku: string;
+    imageUrl?: string | null;
+    product: { title: string; images?: unknown };
+  };
+};
+
+const columnHelper = createAdminColumnHelper<MovementRow>();
+
+export function InventoryMovements({ rows }: { rows: MovementRow[] }) {
+  const columns = useMemo(
+    () =>
+      columnHelper.columns([
+        columnHelper.accessor((row) => new Date(row.createdAt).getTime(), {
+          id: "createdAt",
+          header: "When",
+          cell: (info) => (
+            <span title={formatDateTime(info.row.original.createdAt)}>
+              {formatRelative(info.row.original.createdAt)}
+            </span>
+          ),
+          meta: { tabular: true, nowrap: true },
+        }),
+        columnHelper.accessor((row) => `${row.variant.product.title} ${row.variant.sku}`, {
+          id: "product",
+          header: "Product",
+          cell: (info) => {
+            const row = info.row.original;
+            const image = row.variant.imageUrl || productImages(row.variant.product.images)[0];
+            return (
+              <div className="flex items-center gap-3">
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                  {image ? (
+                    <Image src={image} alt="" fill sizes="48px" className="object-cover" />
+                  ) : null}
+                </div>
+                <span>
+                  {row.variant.product.title}
+                  <span className="block font-tabular text-xs text-muted-foreground">
+                    {row.variant.sku}
+                  </span>
+                </span>
+              </div>
+            );
+          },
+        }),
+        columnHelper.accessor("type", {
+          header: "Type",
+          cell: (info) => info.getValue().toLowerCase(),
+        }),
+        columnHelper.accessor("quantity", {
+          header: "Qty",
+          meta: { tabular: true },
+        }),
+        columnHelper.accessor((row) => row.note ?? "—", {
+          id: "note",
+          header: "Note",
+          cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+        }),
+      ]),
+    [],
+  );
+
   if (!rows.length) {
     return <p className="text-sm text-muted-foreground">No stock movements yet.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-muted/50 text-xs tracking-[0.12em] text-muted-foreground uppercase">
-          <tr>
-            <th className="px-3 py-2 font-medium">When</th>
-            <th className="px-3 py-2 font-medium">Product</th>
-            <th className="px-3 py-2 font-medium">Type</th>
-            <th className="px-3 py-2 font-medium">Qty</th>
-            <th className="px-3 py-2 font-medium">Note</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t border-border">
-              <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
-                {new Date(row.createdAt).toLocaleString()}
-              </td>
-              <td className="px-3 py-2">
-                {row.variant.product.title}
-                <span className="block font-tabular text-xs text-muted-foreground">{row.variant.sku}</span>
-              </td>
-              <td className="px-3 py-2">{row.type.toLowerCase()}</td>
-              <td className="font-tabular px-3 py-2">{row.quantity}</td>
-              <td className="px-3 py-2 text-muted-foreground">{row.note ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <AdminDataTable
+      data={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      searchPlaceholder="Search product, SKU, or type"
+    />
   );
 }

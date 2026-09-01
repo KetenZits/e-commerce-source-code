@@ -69,6 +69,7 @@ export function ProductForm({
   const variants = useFieldArray({ control: form.control, name: "variants" });
   const preview = useWatch({ control: form.control });
   const images = useWatch({ control: form.control, name: "images" }) ?? [];
+  const lastBaseBaht = useRef(defaultValues.basePriceCents / 100);
 
   const draft = trpc.admin.productDraft.useQuery(undefined, { enabled: !id });
   const saveDraft = trpc.admin.saveProductDraft.useMutation();
@@ -88,6 +89,7 @@ export function ProductForm({
     if (parsed.success) {
       form.reset(parsed.data);
       variants.replace(parsed.data.variants);
+      lastBaseBaht.current = parsed.data.basePriceBaht;
       toast.message("Draft restored");
     }
   }, [draft.data, draft.isFetched, form, id, variants]);
@@ -125,6 +127,23 @@ export function ProductForm({
     } finally {
       setUploading(false);
     }
+  }
+
+  function applyBasePriceToVariants(nextBase: number, mode: "matching" | "all") {
+    if (!Number.isFinite(nextBase) || nextBase <= 0) return 0;
+    const current = form.getValues("variants");
+    const previous = lastBaseBaht.current;
+    let changed = 0;
+    current.forEach((variant, index) => {
+      if (mode === "all" || variant.priceBaht === previous) {
+        if (variant.priceBaht !== nextBase) {
+          form.setValue(`variants.${index}.priceBaht`, nextBase, { shouldDirty: true });
+          changed += 1;
+        }
+      }
+    });
+    lastBaseBaht.current = nextBase;
+    return changed;
   }
 
   function generateMatrix() {
@@ -303,15 +322,45 @@ export function ProductForm({
             {step === 2 ? (
               <div className="space-y-4">
                 <SectionTitle title="Price and stock" text="Enter customer-facing prices directly in Thai baht." />
-                <Field label="Base price (฿)" error={form.formState.errors.basePriceBaht?.message}>
+                <Field label="Selling price (฿)" error={form.formState.errors.basePriceBaht?.message}>
                   <Input
                     type="number"
                     min="0"
                     step="0.01"
                     className="font-tabular"
-                    {...form.register("basePriceBaht", { valueAsNumber: true })}
+                    {...form.register("basePriceBaht", {
+                      valueAsNumber: true,
+                      onBlur: () => {
+                        const next = form.getValues("basePriceBaht");
+                        const updated = applyBasePriceToVariants(next, "matching");
+                        if (updated) {
+                          toast.message(
+                            `Updated ${updated} variant price${updated === 1 ? "" : "s"} to ${formatMoney(bahtToSatang(next))}`,
+                          );
+                        }
+                      },
+                    })}
                   />
                 </Field>
+                <p className="text-xs text-muted-foreground">
+                  The cart charges variant prices. Changing this field updates SKUs that still use the previous price.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const next = form.getValues("basePriceBaht");
+                    const updated = applyBasePriceToVariants(next, "all");
+                    toast.message(
+                      updated
+                        ? `Applied ${formatMoney(bahtToSatang(next))} to ${updated} variant${updated === 1 ? "" : "s"}`
+                        : "Variant prices already match",
+                    );
+                  }}
+                >
+                  Apply price to all variants
+                </Button>
                 <Field label="Currency">
                   <Input {...form.register("currency")} className="font-tabular" />
                 </Field>
@@ -475,8 +524,13 @@ export function ProductForm({
             <p className="eyebrow">{preview.brand || "Brand"}</p>
             <h3 className="font-display text-lg">{preview.title || "Product title"}</h3>
             <p className="font-tabular text-right text-sm text-brass">
-              {formatMoney(bahtToSatang(preview.basePriceBaht ?? 0))}
+              {formatMoney(bahtToSatang(previewSellingBaht(preview)))}
             </p>
+            {previewPriceMismatch(preview) ? (
+              <p className="pt-2 text-xs leading-5 text-destructive">
+                Variants still charge {formatMoney(bahtToSatang(previewSellingBaht(preview)))}. The cart uses those prices, not the field above. Apply the selling price to all variants, then save.
+              </p>
+            ) : null}
           </div>
         </div>
       </aside>
@@ -509,6 +563,26 @@ function Field({
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
   );
+}
+
+function previewSellingBaht(preview: {
+  basePriceBaht?: number;
+  variants?: { priceBaht?: number }[];
+}) {
+  const variantPrices = (preview.variants ?? [])
+    .map((variant) => variant?.priceBaht)
+    .filter((price): price is number => Number.isFinite(price) && (price ?? 0) > 0);
+  if (variantPrices.length) return Math.min(...variantPrices);
+  return preview.basePriceBaht ?? 0;
+}
+
+function previewPriceMismatch(preview: {
+  basePriceBaht?: number;
+  variants?: { priceBaht?: number }[];
+}) {
+  const base = preview.basePriceBaht ?? 0;
+  const selling = previewSellingBaht(preview);
+  return Number.isFinite(base) && Number.isFinite(selling) && base > 0 && selling > 0 && base !== selling;
 }
 
 function toEditor(form: BackendForm): EditorForm {

@@ -53,7 +53,7 @@ export const DEFAULT_STOREFRONT_CONFIG: StorefrontConfig = {
   },
   catalog: {
     eyebrow: "Atelier catalog",
-    title: "Objects for everyday use",
+    title: "Shop",
     body: "Quiet materials, useful forms, and small-batch pieces selected for daily life. Filter by collection, maker, or price to find the right piece.",
   },
   collections: {

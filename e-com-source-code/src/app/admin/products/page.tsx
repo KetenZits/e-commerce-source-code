@@ -4,7 +4,7 @@ import { CatalogExportButton } from "@/components/admin/csv-export";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
 import { formatMoney } from "@/lib/money";
-import { productImages } from "@/lib/product";
+import { productImages, sellingPriceCents } from "@/lib/product";
 import { serverCaller } from "@/trpc/server";
 
 export default async function AdminProductsPage() {
@@ -38,10 +38,7 @@ export default async function AdminProductsPage() {
             const stock = product.variants.reduce((sum, variant) => sum + variant.stockQty, 0);
             const reserved = product.variants.reduce((sum, variant) => sum + variant.reservedQty, 0);
             const available = Math.max(0, stock - reserved);
-            const minPrice = Math.min(
-              ...product.variants.map((variant) => variant.priceCents),
-              product.basePriceCents,
-            );
+            const minPrice = sellingPriceCents(product);
 
             return (
               <Link

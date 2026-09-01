@@ -15,8 +15,10 @@ export default async function InventoryPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-2xl">Inventory</h1>
-        <p className="text-sm text-muted-foreground">
-          {low} variant(s) at or below the low-
+        <p className="mt-1 text-sm text-muted-foreground">
+          {rows.length} variant{rows.length === 1 ? "" : "s"}
+          {" · "}
+          {low} at or below the low-
           {storefront.storeMode === "digital" ? "availability" : "stock"} threshold.
         </p>
       </div>

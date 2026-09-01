@@ -5,6 +5,7 @@ import { AddToCart } from "@/components/product/add-to-cart";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductMarquee } from "@/components/product/product-marquee";
 import { ReviewForm } from "@/components/product/review-form";
+import { StarRating } from "@/components/ui/star-rating";
 import { RecentlyViewed, TrackRecentlyViewed } from "@/components/product/recently-viewed";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionDivider } from "@/components/section-divider";
@@ -108,15 +109,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {product.reviews.length ? (
         <section className="space-y-4">
           <h2 className="font-display text-2xl">{t("product.reviews")}</h2>
-          <p className="text-sm text-muted-foreground">
-            {product.rating?.toFixed(1)} / 5 · {product.reviewCount} {t("product.reviewCount")}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <StarRating value={product.rating ?? 0} />
+            <span>
+              {product.rating?.toFixed(1)} · {product.reviewCount} {t("product.reviewCount")}
+            </span>
+          </div>
           <div className="space-y-3">
             {product.reviews.map((review) => (
               <article key={review.id} className="rounded-xl border border-border bg-card p-4">
-                <p className="text-sm font-medium">
-                  {review.user.name ?? t("product.customer")} · {review.rating}/5
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium">{review.user.name ?? t("product.customer")}</p>
+                  <StarRating value={review.rating} size="sm" />
+                </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.comment}</p>
               </article>
             ))}
@@ -127,14 +132,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {related.length > 1 ? (
         <>
           <SectionDivider />
-          <section className="space-y-5" aria-labelledby="related-products">
-            <Reveal>
-              <p className="eyebrow">{t("product.keepExploring")}</p>
-              <h2 id="related-products" className="font-display mt-2 text-2xl">
-                {t("product.moreFrom")}
-              </h2>
-            </Reveal>
-            <ProductMarquee products={related} />
+          <section aria-labelledby="related-products">
+            <ProductMarquee
+              products={related}
+              eyebrow={t("product.keepExploring")}
+              title={t("product.moreFrom")}
+              description={t("home.acrossHint")}
+              cta={{ href: "/catalog", label: t("home.viewAllProducts") }}
+              highlightId={related[0]?.id}
+              headingId="related-products"
+            />
           </section>
         </>
       ) : null}

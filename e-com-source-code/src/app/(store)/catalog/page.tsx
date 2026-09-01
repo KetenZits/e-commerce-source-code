@@ -1,9 +1,7 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { CatalogControls } from "@/components/catalog/catalog-controls";
-import { ProductTile } from "@/components/product/product-tile";
+import Image from "next/image";
+import { CatalogBoard } from "@/components/catalog/catalog-controls";
 import { Reveal } from "@/components/motion/reveal";
-import { StaggerItem, StaggerRoot } from "@/components/motion/stagger";
 import { SectionDivider } from "@/components/section-divider";
 import { ShippingInfo } from "@/components/shipping/shipping-info";
 import { getI18n } from "@/lib/i18n/get-locale";
@@ -20,6 +18,9 @@ type Search = {
   sort?: string;
   page?: string;
 };
+
+const CATALOG_HERO_IMAGE =
+  "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=900&q=80";
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<Search> }) {
   const raw = await searchParams;
@@ -48,61 +49,64 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   if (raw.max) query.set("max", raw.max);
   if (raw.sort) query.set("sort", raw.sort);
 
+  const newestIds = new Set(
+    parsed.page === 1 && parsed.sort === "newest"
+      ? result.items.slice(0, 2).map((product) => product.id)
+      : [],
+  );
+  const bestSellerId = result.items.find((product) => !newestIds.has(product.id))?.id;
+  const items = result.items.map((product) => ({
+    id: product.id,
+    slug: product.slug,
+    title: product.title,
+    brand: product.brand,
+    images: product.images,
+    minPriceCents: product.minPriceCents,
+    currency: product.currency,
+    inStock: product.inStock,
+    variantId: product.variantId,
+    basePriceCents: product.basePriceCents,
+    isNew: newestIds.has(product.id),
+    isBestSeller: product.id === bestSellerId,
+  }));
+
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
-      <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground">{t("catalog.home")}</Link>
-        <span>/</span>
-        <span>{collection?.name ?? t("nav.shop")}</span>
-      </nav>
-      <Reveal className="max-w-2xl space-y-4 py-4">
-        <p className="eyebrow">{collection ? t("catalog.collection") : storefront.catalog.eyebrow}</p>
-        <h1 className="font-display text-4xl">
-          {collection?.name ?? storefront.catalog.title}
-        </h1>
-        <p className="leading-7 text-muted-foreground">
-          {storefront.catalog.body}
-        </p>
-      </Reveal>
-      <Suspense fallback={<div className="h-28 rounded-xl border border-border bg-card" />}>
-        <CatalogControls categories={meta.categories} brands={meta.brands}>
-          <div className="mb-5 flex items-center justify-between text-sm text-muted-foreground">
-            <span>{result.total} {t("catalog.products")}</span>
-            {collection ? (
-              <Link href="/catalog" className="text-primary">{t("catalog.viewAll")}</Link>
-            ) : null}
-          </div>
-          {result.items.length === 0 ? (
-            <p className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
-              {t("catalog.empty")}
+    <div className="mx-auto max-w-7xl space-y-10 px-4 py-10">
+      <Reveal>
+        <section className="grid items-end gap-8 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="max-w-xl">
+            <h1 className="font-display text-5xl leading-[1.05] md:text-6xl">
+              {collection?.name ?? t("nav.shop")}
+            </h1>
+            <p className="mt-4 max-w-md leading-7 text-muted-foreground">
+              {storefront.catalog.body}
             </p>
-          ) : (
-            <StaggerRoot className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
-              {result.items.map((product, index) => (
-                <StaggerItem key={product.id}>
-                  <ProductTile product={product} priority={index < 2} />
-                </StaggerItem>
-              ))}
-            </StaggerRoot>
-          )}
-          {result.pageCount > 1 ? (
-            <div className="mt-8 flex justify-center gap-2 text-sm">
-              {Array.from({ length: result.pageCount }, (_, index) => {
-                const page = index + 1;
-                const href = `/catalog?${new URLSearchParams({ ...Object.fromEntries(query), page: String(page) }).toString()}`;
-                return (
-                  <Link
-                    key={page}
-                    href={href}
-                    className={`rounded-md px-3 py-1.5 ${page === result.page ? "bg-muted text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    {page}
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </CatalogControls>
+          </div>
+          <div className="relative aspect-5/4 overflow-hidden rounded-2xl bg-muted">
+            <Image
+              src={CATALOG_HERO_IMAGE}
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 768px) 40vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+        </section>
+      </Reveal>
+      <Suspense fallback={<div className="h-28 rounded-2xl bg-card" />}>
+        <CatalogBoard
+          categories={meta.categories.map((category) => ({
+            slug: category.slug,
+            name: category.name,
+          }))}
+          brands={meta.brands}
+          total={result.total}
+          items={items}
+          page={result.page}
+          pageCount={result.pageCount}
+          queryString={query.toString()}
+        />
       </Suspense>
       <SectionDivider />
       <section className="space-y-6">

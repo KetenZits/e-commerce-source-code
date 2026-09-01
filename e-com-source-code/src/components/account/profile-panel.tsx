@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrivacyActions } from "@/components/legal/privacy-actions";
 import { useI18n } from "@/components/i18n/locale-provider";
-import { localeTag } from "@/lib/i18n/config";
+import { formatDate } from "@/lib/datetime";
 import { StatusChip } from "@/components/ui/status-chip";
 import { trpc } from "@/trpc/client";
 
@@ -71,11 +71,7 @@ export function ProfilePanel({
     onError: (error) => toast.error(error.message),
   });
 
-  const joined = new Date(profile.createdAt).toLocaleDateString(localeTag(locale), {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const joined = formatDate(profile.createdAt, "d MMMM yyyy", locale);
 
   async function refreshPhoto(image: string | null) {
     await update({ image });

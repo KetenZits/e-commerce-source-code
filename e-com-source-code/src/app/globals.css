@@ -82,7 +82,7 @@
   --sidebar-border: #e3dfd6;
   --sidebar-ring: #2c3b32;
   --motion-premium: cubic-bezier(0.22, 1, 0.36, 1);
-  --marquee-duration: 42s;
+  --marquee-duration: 28s;
 }
 
 @layer base {
@@ -218,15 +218,8 @@
     0 22px 50px color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
-.product-marquee {
+.product-marquee-viewport {
   overflow: hidden;
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    black 6%,
-    black 94%,
-    transparent
-  );
 }
 
 .product-marquee-track {
@@ -236,9 +229,21 @@
   will-change: transform;
 }
 
-.product-marquee:hover .product-marquee-track,
-.product-marquee:focus-within .product-marquee-track {
+.product-marquee-set {
+  display: flex;
+  gap: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+.product-marquee-viewport:hover .product-marquee-track,
+.product-marquee-viewport:focus-within .product-marquee-track {
   animation-play-state: paused;
+}
+
+@keyframes product-marquee {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
 }
 
 @keyframes atmosphere-drift {
@@ -247,12 +252,6 @@
   }
   to {
     transform: translate3d(5%, 4%, 0) scale(1.05);
-  }
-}
-
-@keyframes product-marquee {
-  to {
-    transform: translate3d(-50%, 0, 0);
   }
 }
 
@@ -270,13 +269,8 @@
     transition: none;
   }
 
-  .product-marquee {
-    overflow-x: auto;
-    mask-image: none;
-  }
-
   .product-marquee-track {
-    animation: none;
-    will-change: auto;
+    animation-duration: var(--marquee-duration) !important;
+    animation-iteration-count: infinite !important;
   }
 }

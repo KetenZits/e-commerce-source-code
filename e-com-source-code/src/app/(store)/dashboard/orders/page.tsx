@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { StatusChip } from "@/components/ui/status-chip";
 import { getI18n } from "@/lib/i18n/get-locale";
+import { formatRelative } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { serverCaller } from "@/trpc/server";
 
@@ -15,7 +16,7 @@ const tone: Record<string, "muted" | "brass" | "forest" | "brick"> = {
 };
 
 export default async function OrdersPage() {
-  const [orders, { t }] = await Promise.all([
+  const [orders, { t, locale }] = await Promise.all([
     (await serverCaller()).order.mine(),
     getI18n(),
   ]);
@@ -42,7 +43,7 @@ export default async function OrdersPage() {
               <div>
                 <p className="font-tabular text-sm">{order.promptpayRef}</p>
                 <p className="text-sm text-muted-foreground">
-                  {order.items.length} {t("orders.items")} ·{" "}
+                  {formatRelative(order.createdAt, locale)} · {order.items.length} {t("orders.items")} ·{" "}
                   {order.fulfillmentType === "DIGITAL"
                     ? order.status === "DELIVERED"
                       ? t("orders.accessReady")

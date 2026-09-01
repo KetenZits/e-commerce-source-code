@@ -24,6 +24,25 @@ export function productImages(value: unknown): string[] {
   return asStringArray(value);
 }
 
+/** Price customers pay — variant SKUs, not the admin base-price field. */
+export function sellingPriceCents(
+  product: { basePriceCents: number; variants: { priceCents: number }[] },
+) {
+  if (product.variants.length) {
+    return Math.min(...product.variants.map((variant) => variant.priceCents));
+  }
+  return product.basePriceCents;
+}
+
+export function defaultVariantId(
+  variants: { id: string; stockQty: number; reservedQty?: number | null }[],
+) {
+  const available = variants.find(
+    (variant) => variant.stockQty - (variant.reservedQty ?? 0) > 0,
+  );
+  return available?.id ?? variants[0]?.id;
+}
+
 export function skuFrom(brand: string, title: string, attrs: VariantAttributes) {
   const base = `${brand}-${title}`
     .toUpperCase()

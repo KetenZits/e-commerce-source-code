@@ -1,20 +1,24 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { StarRating } from "@/components/ui/star-rating";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/components/i18n/locale-provider";
 import { trpc } from "@/trpc/client";
 
 export function ReviewForm({ productId }: { productId: string }) {
+  const router = useRouter();
   const { t } = useI18n();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const create = trpc.review.create.useMutation({
-    onSuccess: () => {
-      toast.message(t("review.submitted"));
+    onSuccess: (review) => {
+      toast.message(review.status === "PUBLISHED" ? t("review.published") : t("review.submitted"));
       setComment("");
+      router.refresh();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -28,17 +32,10 @@ export function ReviewForm({ productId }: { productId: string }) {
       }}
     >
       <p className="text-sm font-medium">{t("review.write")}</p>
-      <select
-        className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-        value={rating}
-        onChange={(event) => setRating(Number(event.target.value))}
-      >
-        {[5, 4, 3, 2, 1].map((value) => (
-          <option key={value} value={value}>
-            {value} {value === 1 ? t("review.star") : t("review.stars")}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground">{t("review.rating")}</span>
+        <StarRating value={rating} onChange={setRating} />
+      </div>
       <Textarea
         required
         minLength={10}

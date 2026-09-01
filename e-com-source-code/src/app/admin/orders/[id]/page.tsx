@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { OrderActions } from "@/components/admin/order-actions";
 import { SectionDivider } from "@/components/section-divider";
 import { StatusChip } from "@/components/ui/status-chip";
+import { formatDateTime } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { formatAttributes } from "@/lib/product";
 import { serverCaller } from "@/trpc/server";
@@ -108,7 +109,7 @@ export default async function AdminOrderDetailPage({
               <div className="mt-4 text-sm leading-6 text-muted-foreground">
                 <p>
                   {order.digitalDeliveredAt
-                    ? `Delivered ${new Date(order.digitalDeliveredAt).toLocaleString("en-GB")}`
+                    ? `Delivered ${formatDateTime(order.digitalDeliveredAt)}`
                     : order.status === "PAID"
                       ? "Payment confirmed — access details are waiting to be delivered."
                       : "Access details become deliverable after payment confirmation."}
@@ -147,7 +148,7 @@ export default async function AdminOrderDetailPage({
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Verified</dt>
                 <dd className="font-tabular">
-                  {order.verifiedAt ? new Date(order.verifiedAt).toLocaleString("en-GB") : "Pending"}
+                  {order.verifiedAt ? formatDateTime(order.verifiedAt) : "Pending"}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -180,7 +181,7 @@ export default async function AdminOrderDetailPage({
                     {event.status.toLowerCase()}
                   </StatusChip>
                   <time className="font-tabular text-xs text-muted-foreground">
-                    {new Date(event.createdAt).toLocaleString("en-GB")}
+                    {formatDateTime(event.createdAt)}
                   </time>
                 </div>
                 {event.note ? (
